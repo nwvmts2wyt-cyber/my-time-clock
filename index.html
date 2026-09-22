@@ -37,18 +37,6 @@
       box-shadow:0 8px 24px rgba(0,0,0,.15);touch-action:manipulation;
     }
     .punch.out{background:var(--red)}
-    .lunch-row{
-      display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;
-      margin:8px auto 16px;
-    }
-    .lunch-label{font-weight:800;font-size:18px}
-    .seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .seg button{
-      min-width:74px;min-height:46px;border:0;background:var(--card);color:var(--text);
-      font-size:17px;font-weight:800;padding:0 16px
-    }
-    .seg button.active{background:var(--blue);color:white}
-    .hint{text-align:center;color:var(--muted);font-size:13px;margin-top:-4px}
     .card{
       background:var(--card);border:1px solid var(--line);border-radius:16px;
       padding:14px;margin-top:18px;
@@ -113,8 +101,6 @@ th:nth-child(5){width:14%}
 .actions{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-top:18px}
 .actions .smallbtn{min-height:54px;font-size:18px;padding:0 18px}
 .footer{text-align:left;font-size:14px;line-height:1.45;margin-top:18px;font-weight:650}
-.hint{font-size:14px;font-weight:650}
-.lunch-label{font-size:18px}.seg button{min-width:80px;min-height:48px;font-size:17px}
 @media(max-width:600px){
   main{padding:10px 8px 32px}
   .card{border-radius:18px;padding:10px;margin-top:20px}
@@ -144,15 +130,6 @@ th:nth-child(5){width:14%}
   <div class="punch-wrap">
     <button id="punchBtn" class="punch" type="button" aria-label="Clock in">IN</button>
   </div>
-
-  <div class="lunch-row">
-    <span class="lunch-label">Lunch</span>
-    <div class="seg" role="group" aria-label="Lunch taken">
-      <button id="lunchNo" type="button" class="active">No</button>
-      <button id="lunchYes" type="button">Yes</button>
-    </div>
-  </div>
-  <div class="hint">Lunch = Yes automatically subtracts 30 minutes.</div>
   <div id="message" class="msg" aria-live="polite"></div>
 
   <section class="card">
@@ -279,7 +256,7 @@ th:nth-child(5){width:14%}
 (() => {
   const STORAGE_KEY = "jake-time-clock-v2";
   const el = id => document.getElementById(id);
-  const punchBtn = el("punchBtn"), lunchNo = el("lunchNo"), lunchYes = el("lunchYes");
+  const punchBtn = el("punchBtn");
   const statusEl = el("status"), messageEl = el("message"), weekBody = el("weekBody");
   const weekRange = el("weekRange"), weekTotal = el("weekTotal"), undoBtn = el("undoBtn");
 
@@ -339,13 +316,6 @@ th:nth-child(5){width:14%}
     save(); render();
   }
 
-  function setLunch(v){
-    state.lunchCurrent = !!v;
-    const rec = activeRecord();
-    if(rec) rec.lunch = !!v;
-    save(); render();
-  }
-
   function punch(){
     snapshot();
     const now = new Date();
@@ -392,9 +362,6 @@ th:nth-child(5){width:14%}
       punchBtn.textContent="IN"; punchBtn.classList.remove("out"); punchBtn.setAttribute("aria-label","Clock in");
       statusEl.textContent="Clocked out";
     }
-    lunchYes.classList.toggle("active", !!state.lunchCurrent);
-    lunchNo.classList.toggle("active", !state.lunchCurrent);
-
     const sun=new Date(viewedMonday); sun.setDate(sun.getDate()+6);
     weekRange.textContent=fmtDate(viewedMonday,{month:"short",day:"numeric"})+" – "+fmtDate(sun,{month:"short",day:"numeric",year:"numeric"});
     let weekMins=0;
@@ -465,8 +432,6 @@ th:nth-child(5){width:14%}
   }
 
   punchBtn.addEventListener("click", punch);
-  lunchNo.addEventListener("click", ()=>setLunch(false));
-  lunchYes.addEventListener("click", ()=>setLunch(true));
   el("prevWeek").addEventListener("click", ()=>shiftWeek(-7));
   el("nextWeek").addEventListener("click", ()=>shiftWeek(7));
   el("thisWeek").addEventListener("click", ()=>{viewedMonday=mondayOf(new Date());render();});
