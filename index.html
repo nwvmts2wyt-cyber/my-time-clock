@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Time Clock">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <title>My Time Clock</title>
+  <style>
+    :root{
+      color-scheme: light dark;
+      --bg:#f4f5f7;--card:#fff;--text:#111827;--muted:#6b7280;--line:#d1d5db;
+      --green:#15803d;--red:#b91c1c;--blue:#1d4ed8;--soft:#e5e7eb;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{--bg:#0f1115;--card:#191c22;--text:#f3f4f6;--muted:#9ca3af;--line:#343943;--soft:#2a2f38}
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      min-height:100vh;
+    }
+    main{max-width:760px;margin:0 auto;padding:18px 14px 40px}
+    h1{font-size:24px;margin:4px 0 6px;text-align:center}
+    .sub{text-align:center;color:var(--muted);font-size:14px}
+    .clock{text-align:center;font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:6px}
+    .status{text-align:center;margin-top:7px;color:var(--muted);min-height:22px}
+    .punch-wrap{display:flex;justify-content:center;margin:22px 0 12px}
+    .punch{
+      width:210px;height:210px;border-radius:50%;border:8px solid rgba(0,0,0,.08);
+      font-size:54px;font-weight:900;color:white;background:var(--green);
+      box-shadow:0 8px 24px rgba(0,0,0,.15);touch-action:manipulation;
+    }
+    .punch.out{background:var(--red)}
+    .lunch-row{
+      display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;
+      margin:8px auto 16px;
+    }
+    .lunch-label{font-weight:800;font-size:18px}
+    .seg{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .seg button{
+      min-width:74px;min-height:46px;border:0;background:var(--card);color:var(--text);
+      font-size:17px;font-weight:800;padding:0 16px
+    }
+    .seg button.active{background:var(--blue);color:white}
+    .hint{text-align:center;color:var(--muted);font-size:13px;margin-top:-4px}
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:14px;margin-top:18px;
+    }
+    .toprow{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+    .week-title{font-size:20px;font-weight:800}
+    .week-range{color:var(--muted);font-size:13px;margin-top:2px}
+    .total{text-align:right}.total small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase}
+    .total strong{font-size:28px;font-variant-numeric:tabular-nums}
+    .weeknav{display:flex;gap:8px;margin:14px 0 8px;flex-wrap:wrap}
+    .smallbtn{
+      border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;
+      min-height:42px;padding:0 14px;font-weight:700;font-size:14px
+    }
+    .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:620px}
+    th,td{padding:11px 9px;border-bottom:1px solid var(--line);text-align:left;font-size:14px}
+    th{background:var(--soft);font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+    td:last-child,th:last-child{text-align:right}
+    tr:last-child td{border-bottom:0}
+    .day{font-weight:800}.date{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+    .yes{font-weight:800}.no{color:var(--muted)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+    .msg{text-align:center;min-height:22px;font-weight:700;margin:8px 0 0}
+    .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;line-height:1.4}
+    button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>My Time Clock</h1>
+  <div id="dateLabel" class="sub"></div>
+  <div id="liveClock" class="clock"></div>
+  <div id="status" class="status">Clocked out</div>
+
+  <div class="punch-wrap">
+    <button id="punchBtn" class="punch" type="button" aria-label="Clock in">IN</button>
+  </div>
+
+  <div class="lunch-row">
+    <span class="lunch-label">Lunch</span>
+    <div class="seg" role="group" aria-label="Lunch taken">
+      <button id="lunchNo" type="button" class="active">No</button>
+      <button id="lunchYes" type="button">Yes</button>
+    </div>
+  </div>
+  <div class="hint">Lunch = Yes automatically subtracts 30 minutes.</div>
+  <div id="message" class="msg" aria-live="polite"></div>
+
+  <section class="card">
+    <div class="toprow">
+      <div>
+        <div class="week-title">Weekly Time Sheet</div>
+        <div id="weekRange" class="week-range"></div>
+      </div>
+      <div class="total">
+        <small>Week Total</small>
+        <strong id="weekTotal">0:00</strong>
+      </div>
+    </div>
+
+    <div class="weeknav">
+      <button id="prevWeek" class="smallbtn" type="button">← Previous</button>
+      <button id="thisWeek" class="smallbtn" type="button">This Week</button>
+      <button id="nextWeek" class="smallbtn" type="button">Next →</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Day</th><th>In</th><th>Out</th><th>Lunch</th><th>Hours</th></tr>
+        </thead>
+        <tbody id="weekBody"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button id="exportBtn" class="smallbtn" type="button">Export Week CSV</button>
+      <button id="undoBtn" class="smallbtn" type="button">Undo Last Punch</button>
+    </div>
+    <div class="footer">Your punches are saved on this device. If you clear Safari website data or delete the app data, the saved time can be erased.</div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const STORAGE_KEY = "jake-time-clock-v2";
+  const el = id => document.getElementById(id);
+  const punchBtn = el("punchBtn"), lunchNo = el("lunchNo"), lunchYes = el("lunchYes");
+  const statusEl = el("status"), messageEl = el("message"), weekBody = el("weekBody");
+  const weekRange = el("weekRange"), weekTotal = el("weekTotal"), undoBtn = el("undoBtn");
+
+  let state = load();
+  let viewedMonday = mondayOf(new Date());
+
+  function defaultState(){
+    return { records: [], activeId: null, lunchCurrent: false, history: [] };
+  }
+  function load(){
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      return parsed && Array.isArray(parsed.records) ? parsed : defaultState();
+    } catch(e){ return defaultState(); }
+  }
+  function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function key(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function mondayOf(d){
+    const x = new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const day = x.getDay(), diff = day===0 ? -6 : 1-day;
+    x.setDate(x.getDate()+diff); x.setHours(0,0,0,0); return x;
+  }
+  function cloneState(){ return JSON.parse(JSON.stringify({records:state.records,activeId:state.activeId,lunchCurrent:state.lunchCurrent})); }
+  function snapshot(){
+    state.history = state.history || [];
+    state.history.push(cloneState());
+    if(state.history.length>30) state.history.shift();
+  }
+  function fmtTime(iso){
+    if(!iso) return "—";
+    return new Date(iso).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
+  }
+  function fmtDate(d, opts){ return d.toLocaleDateString([],opts); }
+  function minsBetween(a,b){ return Math.max(0,Math.round((new Date(b)-new Date(a))/60000)); }
+  function fmtMins(m){
+    m=Math.max(0,Math.round(m)); return Math.floor(m/60)+":"+pad(m%60);
+  }
+  function activeRecord(){ return state.records.find(r=>r.id===state.activeId) || null; }
+
+  function setLunch(v){
+    state.lunchCurrent = !!v;
+    const rec = activeRecord();
+    if(rec) rec.lunch = !!v;
+    save(); render();
+  }
+
+  function punch(){
+    snapshot();
+    const now = new Date();
+    const rec = activeRecord();
+    if(!rec){
+      const id = String(Date.now());
+      state.records.push({id, dayKey:key(now), inTime:now.toISOString(), outTime:null, lunch:state.lunchCurrent});
+      state.activeId = id;
+      messageEl.textContent = "Clocked IN at "+fmtTime(now.toISOString());
+    } else {
+      rec.outTime = now.toISOString();
+      rec.lunch = !!state.lunchCurrent;
+      state.activeId = null;
+      messageEl.textContent = "Clocked OUT at "+fmtTime(now.toISOString());
+      state.lunchCurrent = false;
+    }
+    save(); render();
+  }
+
+  function dayMinutes(records){
+    let total=0;
+    for(const r of records){
+      const end = r.outTime || (r.id===state.activeId ? new Date().toISOString() : null);
+      if(end) total += minsBetween(r.inTime,end);
+    }
+    if(records.some(r=>r.lunch)) total -= 30;
+    return Math.max(0,total);
+  }
+
+  function renderClock(){
+    const now=new Date();
+    el("liveClock").textContent=now.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"});
+    el("dateLabel").textContent=fmtDate(now,{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+  }
+
+  function render(){
+    renderClock();
+    const rec=activeRecord();
+    if(rec){
+      punchBtn.textContent="OUT"; punchBtn.classList.add("out"); punchBtn.setAttribute("aria-label","Clock out");
+      statusEl.textContent="Clocked in at "+fmtTime(rec.inTime);
+      state.lunchCurrent=!!rec.lunch;
+    }else{
+      punchBtn.textContent="IN"; punchBtn.classList.remove("out"); punchBtn.setAttribute("aria-label","Clock in");
+      statusEl.textContent="Clocked out";
+    }
+    lunchYes.classList.toggle("active", !!state.lunchCurrent);
+    lunchNo.classList.toggle("active", !state.lunchCurrent);
+
+    const sun=new Date(viewedMonday); sun.setDate(sun.getDate()+6);
+    weekRange.textContent=fmtDate(viewedMonday,{month:"short",day:"numeric"})+" – "+fmtDate(sun,{month:"short",day:"numeric",year:"numeric"});
+    weekBody.innerHTML="";
+    let weekMins=0;
+
+    for(let i=0;i<7;i++){
+      const d=new Date(viewedMonday); d.setDate(d.getDate()+i);
+      const recs=state.records.filter(r=>r.dayKey===key(d));
+      const mins=dayMinutes(recs); weekMins+=mins;
+      const ins=recs.length ? recs.map(r=>fmtTime(r.inTime)).join(", ") : "—";
+      const outs=recs.length ? recs.map(r=>r.outTime?fmtTime(r.outTime):(r.id===state.activeId?"Working":"—")).join(", ") : "—";
+      const lunch=recs.some(r=>r.lunch);
+      const tr=document.createElement("tr");
+      tr.innerHTML =
+        '<td><span class="day">'+fmtDate(d,{weekday:"short"})+'</span><span class="date">'+fmtDate(d,{month:"short",day:"numeric"})+'</span></td>'+
+        '<td>'+ins+'</td><td>'+outs+'</td>'+
+        '<td class="'+(lunch?'yes':'no')+'">'+(lunch?'Yes (30 min)':'No')+'</td>'+
+        '<td><strong>'+fmtMins(mins)+'</strong></td>';
+      weekBody.appendChild(tr);
+    }
+    weekTotal.textContent=fmtMins(weekMins);
+    undoBtn.disabled=!(state.history && state.history.length);
+  }
+
+  function shiftWeek(days){ viewedMonday.setDate(viewedMonday.getDate()+days); render(); }
+  function csvEscape(v){ v=String(v??""); return /[",\n]/.test(v) ? '"'+v.replaceAll('"','""')+'"' : v; }
+  function exportCSV(){
+    const rows=[["Day","Date","In","Out","Lunch","Hours"]];
+    for(let i=0;i<7;i++){
+      const d=new Date(viewedMonday); d.setDate(d.getDate()+i);
+      const recs=state.records.filter(r=>r.dayKey===key(d));
+      rows.push([
+        fmtDate(d,{weekday:"long"}), key(d),
+        recs.map(r=>fmtTime(r.inTime)).join(" / ") || "",
+        recs.map(r=>r.outTime?fmtTime(r.outTime):"Working").join(" / ") || "",
+        recs.some(r=>r.lunch) ? "Yes - 30 min" : "No",
+        fmtMins(dayMinutes(recs))
+      ]);
+    }
+    const csv=rows.map(r=>r.map(csvEscape).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="time-sheet-"+key(viewedMonday)+".csv";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
+  punchBtn.addEventListener("click", punch);
+  lunchNo.addEventListener("click", ()=>setLunch(false));
+  lunchYes.addEventListener("click", ()=>setLunch(true));
+  el("prevWeek").addEventListener("click", ()=>shiftWeek(-7));
+  el("nextWeek").addEventListener("click", ()=>shiftWeek(7));
+  el("thisWeek").addEventListener("click", ()=>{viewedMonday=mondayOf(new Date());render();});
+  el("exportBtn").addEventListener("click", exportCSV);
+  undoBtn.addEventListener("click", ()=>{
+    if(!state.history || !state.history.length) return;
+    const prev=state.history.pop();
+    state.records=prev.records||[]; state.activeId=prev.activeId||null; state.lunchCurrent=!!prev.lunchCurrent;
+    save(); messageEl.textContent="Last punch undone"; render();
+  });
+
+  window.addEventListener("beforeunload", save);
+  render();
+  setInterval(()=>{ renderClock(); if(state.activeId) render(); },1000);
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  }
+})();
+</script>
+</body>
+</html>
