@@ -44,7 +44,7 @@
     .action{min-height:58px;border:0;border-radius:18px;font-weight:800;font-size:16px}
     .add{background:var(--goodbg);color:var(--good)}
     .spend{background:var(--badbg);color:var(--bad)}
-    .panel{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:16px;margin-top:14px;box-shadow:var(--shadow)}
+    .panel{min-width:0;max-width:100%;overflow:hidden;background:var(--card);border:1px solid var(--border);border-radius:22px;padding:16px;margin-top:14px;box-shadow:var(--shadow)}
     .panelHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
     .panel h2{font-size:17px;margin:0}
     .sub{font-size:13px;color:var(--muted);margin-top:3px}
@@ -61,16 +61,51 @@
     .empty{border:1px dashed var(--border);border-radius:16px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
     .search{width:100%;height:46px;border:1px solid var(--border);border-radius:14px;background:var(--bg);color:var(--text);padding:0 14px;font-size:16px;outline:none}
     .search:focus,.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
-    .history{display:grid;gap:9px;margin-top:12px}
-    .tx{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:17px;padding:12px;background:var(--card)}
+    .history{display:grid;gap:9px;margin-top:12px;min-width:0;width:100%}
+    .tx{
+      width:100%;
+      max-width:100%;
+      min-width:0;
+      overflow:hidden;
+      display:grid;
+      grid-template-columns:42px minmax(0,1fr) auto;
+      align-items:center;
+      gap:11px;
+      border:1px solid var(--border);
+      border-radius:17px;
+      padding:12px;
+      background:var(--card)
+    }
     .txIcon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;font-size:19px;font-weight:900}
     .txIcon.in{background:var(--goodbg);color:var(--good)}
     .txIcon.out{background:var(--badbg);color:var(--bad)}
-    .txMain{min-width:0;flex:1}
-    .txTitle{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .txMeta{font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .txRight{text-align:right;flex:0 0 auto}
-    .amt{font-weight:800;font-variant-numeric:tabular-nums}
+    .txMain{min-width:0;max-width:100%;overflow:hidden}
+    .txTitle{min-width:0;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .txMeta{
+      min-width:0;
+      max-width:100%;
+      font-size:12px;
+      color:var(--muted);
+      margin-top:3px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis
+    }
+    .txRight{
+      min-width:0;
+      max-width:132px;
+      overflow:hidden;
+      text-align:right
+    }
+    .amt{
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:clamp(13px,3.8vw,16px);
+      font-weight:800;
+      font-variant-numeric:tabular-nums
+    }
     .amt.in{color:var(--good)}
     .amt.out{color:var(--bad)}
     .edit{border:0;background:transparent;color:var(--muted);padding:6px 0 0 10px;font-size:12px;text-decoration:underline}
@@ -98,11 +133,26 @@
     .settingsBlock h3{margin:0 0 6px;font-size:15px}
     .settingsBlock p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
     .settingsActions{display:grid;gap:10px;margin-top:12px}
-    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+    @media(max-width:420px){
+      .tx{grid-template-columns:42px minmax(0,1fr)}
+      .txRight{
+        grid-column:2;
+        max-width:100%;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        text-align:left;
+        margin-top:2px
+      }
+      .amt{font-size:15px}
+      .edit{padding:4px 0 0 8px}
+    }
     .hidden{display:none!important}
     @media(min-width:680px){
       .app{padding-left:24px;padding-right:24px}
-      .contentGrid{display:grid;grid-template-columns:.95fr 1.05fr;gap:14px;align-items:start}
+      .contentGrid{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:14px;align-items:start}
       .contentGrid .panel{margin-top:0}
     }
   </style>
