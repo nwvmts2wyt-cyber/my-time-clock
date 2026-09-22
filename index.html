@@ -75,7 +75,48 @@
     .msg{text-align:center;min-height:22px;font-weight:700;margin:8px 0 0}
     .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;line-height:1.4}
     button:focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+  
+    .timeinput{width:100%;min-width:92px;min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font:inherit;padding:6px}
+    .lunchcheck{width:24px;height:24px;accent-color:var(--blue)}
+    tbody td{vertical-align:middle}
+    @media(max-width:560px){th,td{padding:12px 6px;font-size:14px}.day{font-size:18px}.date{font-size:12px}.timeinput{min-width:0;font-size:15px;padding:4px}.table-wrap{overflow-x:auto}table{min-width:520px}}
   </style>
+
+<style id="screenshot-match">
+:root{--bg:#0d1015;--card:#181c22;--text:#f5f6f8;--muted:#9da4b1;--line:#373d48;--soft:#2a2f38}
+body{background:var(--bg);color:var(--text);font-weight:500}
+main{max-width:820px;padding:22px 30px 55px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:34px;padding:32px;margin-top:34px}
+.toprow{align-items:center;flex-wrap:nowrap}
+.week-title{font-size:44px;font-weight:900;letter-spacing:-1.5px}
+.week-range{font-size:29px;font-weight:700;margin-top:7px;color:var(--muted)}
+.total small{font-size:23px;font-weight:800;letter-spacing:.04em}
+.total strong{font-size:58px;font-weight:900}
+.weeknav{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin:34px 0 18px}
+.smallbtn{min-height:92px;border:2px solid var(--line);border-radius:24px;font-size:31px;font-weight:900;padding:0 20px}
+.table-wrap{overflow:hidden;border:2px solid var(--line);border-radius:28px}
+table{min-width:0;width:100%;table-layout:fixed}
+th,td{padding:26px 20px;border-bottom:2px solid var(--line);font-size:28px}
+th{background:#2a2f38;font-size:25px;font-weight:900;letter-spacing:.08em}
+th:nth-child(4),th:nth-child(5),td:nth-child(4),td:nth-child(5){display:none}
+th:nth-child(1){width:36%} th:nth-child(2){width:32%} th:nth-child(3){width:32%}
+.day{font-size:30px;font-weight:900;white-space:nowrap}.date{font-size:25px;margin-top:8px;font-weight:650}
+.actions{display:flex;flex-direction:column;align-items:flex-start;gap:18px;margin-top:32px}
+.actions .smallbtn{min-height:92px;font-size:30px;padding:0 32px}
+.footer{text-align:left;font-size:25px;line-height:1.45;margin-top:30px;font-weight:650}
+.hint{font-size:26px;font-weight:650}
+.lunch-label{font-size:31px}.seg button{min-width:150px;min-height:78px;font-size:28px}
+@media(max-width:600px){
+ main{padding:12px 15px 35px}
+ .card{border-radius:20px;padding:16px;margin-top:24px}
+ .week-title{font-size:25px;letter-spacing:-.5px}.week-range{font-size:17px}
+ .total small{font-size:13px}.total strong{font-size:34px}
+ .weeknav{gap:9px;margin:20px 0 10px}.smallbtn{min-height:54px;border-radius:14px;font-size:18px;padding:0 10px}
+ th,td{padding:15px 11px;font-size:17px}th{font-size:14px}.day{font-size:17px;white-space:nowrap}.date{font-size:14px;margin-top:4px}
+ .table-wrap{border-radius:16px}.actions{gap:10px;margin-top:18px}.actions .smallbtn{min-height:54px;font-size:18px;padding:0 18px}
+ .footer{font-size:14px;margin-top:18px}.hint{font-size:14px}.lunch-label{font-size:18px}.seg button{min-width:80px;min-height:48px;font-size:17px}
+}
+</style>
 </head>
 <body>
 <main>
@@ -121,7 +162,15 @@
         <thead>
           <tr><th>Day</th><th>In</th><th>Out</th><th>Lunch</th><th>Hours</th></tr>
         </thead>
-        <tbody id="weekBody"></tbody>
+        <tbody id="weekBody">
+          <tr data-day-index="0"><td><span class="day">Monday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Monday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Monday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Monday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="1"><td><span class="day">Tuesday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Tuesday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Tuesday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Tuesday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="2"><td><span class="day">Wednesday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Wednesday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Wednesday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Wednesday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="3"><td><span class="day">Thursday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Thursday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Thursday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Thursday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="4"><td><span class="day">Friday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Friday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Friday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Friday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="5"><td><span class="day">Saturday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Saturday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Saturday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Saturday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+          <tr data-day-index="6"><td><span class="day">Sunday</span><span class="date">—</span></td><td><input class="timeinput in-edit" type="time" aria-label="Sunday clock in"></td><td><input class="timeinput out-edit" type="time" aria-label="Sunday clock out"></td><td><input class="lunchcheck lunch-edit" type="checkbox" aria-label="Sunday subtract 30 minute lunch"></td><td><strong class="hours-cell">0:00</strong></td></tr>
+        </tbody>
       </table>
     </div>
 
@@ -177,6 +226,19 @@
     m=Math.max(0,Math.round(m)); return Math.floor(m/60)+":"+pad(m%60);
   }
   function activeRecord(){ return state.records.find(r=>r.id===state.activeId) || null; }
+  function timeValue(iso){ if(!iso) return ""; const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+  function localISOForDay(day, hm){ if(!hm) return null; const [h,m]=hm.split(":").map(Number); const d=new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,m,0,0); return d.toISOString(); }
+  function saveManualDay(day, inVal, outVal, lunch){
+    const dk=key(day); const existing=state.records.filter(r=>r.dayKey===dk);
+    snapshot();
+    for(const r of existing){ if(r.id===state.activeId) state.activeId=null; }
+    state.records=state.records.filter(r=>r.dayKey!==dk);
+    if(inVal){
+      const id="manual-"+dk+"-"+Date.now();
+      state.records.push({id,dayKey:dk,inTime:localISOForDay(day,inVal),outTime:outVal?localISOForDay(day,outVal):null,lunch:!!lunch});
+    }
+    save(); render();
+  }
 
   function setLunch(v){
     state.lunchCurrent = !!v;
@@ -236,23 +298,33 @@
 
     const sun=new Date(viewedMonday); sun.setDate(sun.getDate()+6);
     weekRange.textContent=fmtDate(viewedMonday,{month:"short",day:"numeric"})+" – "+fmtDate(sun,{month:"short",day:"numeric",year:"numeric"});
-    weekBody.innerHTML="";
     let weekMins=0;
+    const rows=[...weekBody.querySelectorAll("tr[data-day-index]")];
 
     for(let i=0;i<7;i++){
       const d=new Date(viewedMonday); d.setDate(d.getDate()+i);
       const recs=state.records.filter(r=>r.dayKey===key(d));
       const mins=dayMinutes(recs); weekMins+=mins;
-      const ins=recs.length ? recs.map(r=>fmtTime(r.inTime)).join(", ") : "—";
-      const outs=recs.length ? recs.map(r=>r.outTime?fmtTime(r.outTime):(r.id===state.activeId?"Working":"—")).join(", ") : "—";
+      const first=recs[0] || null;
+      const tr=rows[i];
+      if(!tr) continue;
+      const inVal=first?timeValue(first.inTime):"";
+      const outVal=first&&first.outTime?timeValue(first.outTime):"";
       const lunch=recs.some(r=>r.lunch);
-      const tr=document.createElement("tr");
-      tr.innerHTML =
-        '<td><span class="day">'+fmtDate(d,{weekday:"short"})+'</span><span class="date">'+fmtDate(d,{month:"short",day:"numeric"})+'</span></td>'+
-        '<td>'+ins+'</td><td>'+outs+'</td>'+
-        '<td class="'+(lunch?'yes':'no')+'">'+(lunch?'Yes (30 min)':'No')+'</td>'+
-        '<td><strong>'+fmtMins(mins)+'</strong></td>';
-      weekBody.appendChild(tr);
+      tr.querySelector(".day").textContent=fmtDate(d,{weekday:"long"});
+      tr.querySelector(".date").textContent=fmtDate(d,{month:"short",day:"numeric"});
+      tr.querySelector(".in-edit").value=inVal;
+      tr.querySelector(".out-edit").value=outVal;
+      tr.querySelector(".lunch-edit").checked=lunch;
+      tr.querySelector(".hours-cell").textContent=fmtMins(mins);
+      if(!tr.dataset.bound){
+        tr.querySelectorAll("input").forEach(inp=>inp.addEventListener("change",()=>{
+          const rowIndex=Number(tr.dataset.dayIndex);
+          const day=new Date(viewedMonday); day.setDate(day.getDate()+rowIndex);
+          saveManualDay(day,tr.querySelector(".in-edit").value,tr.querySelector(".out-edit").value,tr.querySelector(".lunch-edit").checked);
+        }));
+        tr.dataset.bound="1";
+      }
     }
     weekTotal.textContent=fmtMins(weekMins);
     undoBtn.disabled=!(state.history && state.history.length);
