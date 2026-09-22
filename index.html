@@ -295,7 +295,23 @@ th:nth-child(5){width:14%}
   function fmtMins(m){
     m=Math.max(0,Math.round(m)); return Math.floor(m/60)+":"+pad(m%60);
   }
-  function activeRecord(){ return state.records.find(r=>r.id===state.activeId) || null; }
+  function activeRecord(){
+    let rec = state.records.find(r=>r.id===state.activeId && r.inTime && !r.outTime) || null;
+    if(!rec){
+      const open = state.records
+        .filter(r=>r.inTime && !r.outTime)
+        .sort((a,b)=>new Date(b.inTime)-new Date(a.inTime));
+      rec = open[0] || null;
+      if(rec && state.activeId!==rec.id){
+        state.activeId = rec.id;
+        save();
+      }else if(!rec && state.activeId){
+        state.activeId = null;
+        save();
+      }
+    }
+    return rec;
+  }
   function timeValue(iso){ if(!iso) return ""; const d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); }
   function localISOForDay(day, hm){ if(!hm) return null; const [h,m]=hm.split(":").map(Number); const d=new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,m,0,0); return d.toISOString(); }
   function saveManualDay(day, inVal, outVal, lunch){
@@ -305,13 +321,17 @@ th:nth-child(5){width:14%}
     state.records=state.records.filter(r=>r.dayKey!==dk);
     if(inVal || outVal || lunch){
       const id="manual-"+dk+"-"+Date.now();
-      state.records.push({
+      const rec={
         id,
         dayKey:dk,
         inTime:inVal?localISOForDay(day,inVal):null,
         outTime:outVal?localISOForDay(day,outVal):null,
         lunch:!!lunch
-      });
+      };
+      state.records.push(rec);
+      if(rec.inTime && !rec.outTime){
+        state.activeId=id;
+      }
     }
     save(); render();
   }
@@ -338,7 +358,7 @@ th:nth-child(5){width:14%}
   function dayMinutes(records){
     let total=0;
     for(const r of records){
-      const end = r.outTime || (r.id===state.activeId ? new Date().toISOString() : null);
+      const end = r.outTime || (r.inTime && !r.outTime && r.id===activeRecord()?.id ? new Date().toISOString() : null);
       if(r.inTime && end) total += minsBetween(r.inTime,end);
     }
     if(records.some(r=>r.lunch) && total>0) total -= 30;
