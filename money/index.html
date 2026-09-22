@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Money Tracker">
+  <meta name="format-detection" content="telephone=no">
+  <title>Our Money Tracker</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <style>
+    :root{
+      color-scheme:light dark;
+      --bg:#f5f7fb;--card:#ffffff;--text:#101828;--muted:#667085;--border:#e4e7ec;
+      --accent:#2563eb;--accent2:#dbeafe;--good:#15803d;--goodbg:#dcfce7;
+      --bad:#b42318;--badbg:#fee4e2;--shadow:0 8px 30px rgba(16,24,40,.08);
+    }
+    @media(prefers-color-scheme:dark){
+      :root{--bg:#0b1220;--card:#121a2a;--text:#f8fafc;--muted:#94a3b8;--border:#263247;
+        --accent:#60a5fa;--accent2:#172554;--good:#4ade80;--goodbg:#12351f;
+        --bad:#fda4af;--badbg:#3d1720;--shadow:0 10px 30px rgba(0,0,0,.28)}
+    }
+    *{box-sizing:border-box}
+    html{background:var(--bg)}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+    button,input,select{font:inherit}
+    button{touch-action:manipulation}
+    .app{max-width:760px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    .eyebrow{font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    h1{font-size:23px;line-height:1.1;margin:4px 0 0}
+    .iconbtn{width:44px;height:44px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:21px}
+    .hero{background:linear-gradient(145deg,#0f172a,#1e3a8a);color:#fff;border-radius:26px;padding:22px;box-shadow:var(--shadow)}
+    .hero small{opacity:.76;font-weight:650}
+    .balance{font-size:42px;font-weight:800;letter-spacing:-.04em;margin:6px 0 18px;word-break:break-word}
+    .heroStats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .heroStat{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:11px}
+    .heroStat span{display:block;font-size:12px;opacity:.72;margin-bottom:3px}
+    .heroStat strong{font-size:17px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+    .action{min-height:58px;border:0;border-radius:18px;font-weight:800;font-size:16px}
+    .add{background:var(--goodbg);color:var(--good)}
+    .spend{background:var(--badbg);color:var(--bad)}
+    .panel{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:16px;margin-top:14px;box-shadow:var(--shadow)}
+    .panelHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .panel h2{font-size:17px;margin:0}
+    .sub{font-size:13px;color:var(--muted);margin-top:3px}
+    .chips{display:flex;gap:8px;overflow:auto;padding-bottom:2px;scrollbar-width:none}
+    .chips::-webkit-scrollbar{display:none}
+    .chip{white-space:nowrap;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:999px;min-height:38px;padding:0 13px;font-size:13px;font-weight:700}
+    .chip.active{background:var(--accent2);border-color:var(--accent);color:var(--accent)}
+    .breakdown{display:grid;gap:12px;margin-top:14px}
+    .barrow{display:grid;gap:6px}
+    .barlabel{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+    .barlabel b{max-width:65%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .track{height:9px;border-radius:999px;background:var(--border);overflow:hidden}
+    .fill{height:100%;border-radius:999px;background:var(--accent)}
+    .empty{border:1px dashed var(--border);border-radius:16px;padding:20px;text-align:center;color:var(--muted);font-size:14px}
+    .search{width:100%;height:46px;border:1px solid var(--border);border-radius:14px;background:var(--bg);color:var(--text);padding:0 14px;font-size:16px;outline:none}
+    .search:focus,.field:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+    .history{display:grid;gap:9px;margin-top:12px}
+    .tx{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:17px;padding:12px;background:var(--card)}
+    .txIcon{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;font-size:19px;font-weight:900}
+    .txIcon.in{background:var(--goodbg);color:var(--good)}
+    .txIcon.out{background:var(--badbg);color:var(--bad)}
+    .txMain{min-width:0;flex:1}
+    .txTitle{font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .txMeta{font-size:12px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .txRight{text-align:right;flex:0 0 auto}
+    .amt{font-weight:800;font-variant-numeric:tabular-nums}
+    .amt.in{color:var(--good)}
+    .amt.out{color:var(--bad)}
+    .edit{border:0;background:transparent;color:var(--muted);padding:6px 0 0 10px;font-size:12px;text-decoration:underline}
+    .notice{background:var(--accent2);color:var(--text);border:1px solid color-mix(in srgb,var(--accent) 40%,var(--border));border-radius:18px;padding:14px;margin-top:14px}
+    .notice b{display:block;margin-bottom:4px}
+    .notice p{margin:0 0 10px;color:var(--muted);font-size:13px;line-height:1.4}
+    .notice button{border:0;border-radius:12px;background:var(--accent);color:#fff;min-height:42px;padding:0 14px;font-weight:800}
+    dialog{border:0;padding:0;background:transparent;max-width:none;max-height:none;width:100%;height:100%;margin:0}
+    dialog::backdrop{background:rgba(2,6,23,.52);backdrop-filter:blur(2px)}
+    .sheetWrap{min-height:100%;display:flex;align-items:flex-end;justify-content:center;padding-top:60px}
+    .sheet{width:min(100%,760px);background:var(--card);border-radius:26px 26px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;box-shadow:0 -20px 50px rgba(0,0,0,.22)}
+    .grab{width:42px;height:5px;border-radius:99px;background:var(--border);margin:0 auto 15px}
+    .sheetHead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .sheet h2{margin:0;font-size:21px}
+    .close{width:42px;height:42px;border:0;border-radius:50%;background:var(--bg);color:var(--text);font-size:21px}
+    .form{display:grid;gap:13px;margin-top:17px}
+    label{font-size:13px;font-weight:750}
+    .field{width:100%;height:50px;border:1px solid var(--border);border-radius:14px;background:var(--bg);color:var(--text);padding:0 13px;font-size:16px;outline:none}
+    .moneyInput{font-size:24px;font-weight:800}
+    .save{min-height:52px;border:0;border-radius:16px;background:var(--accent);color:#fff;font-weight:850;font-size:16px;margin-top:3px}
+    .danger{min-height:48px;border:1px solid var(--bad);border-radius:15px;background:transparent;color:var(--bad);font-weight:800}
+    .secondary{min-height:48px;border:1px solid var(--border);border-radius:15px;background:var(--bg);color:var(--text);font-weight:800}
+    .settingsBlock{padding:14px 0;border-bottom:1px solid var(--border)}
+    .settingsBlock:last-child{border-bottom:0}
+    .settingsBlock h3{margin:0 0 6px;font-size:15px}
+    .settingsBlock p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+    .settingsActions{display:grid;gap:10px;margin-top:12px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .hidden{display:none!important}
+    @media(min-width:680px){
+      .app{padding-left:24px;padding-right:24px}
+      .contentGrid{display:grid;grid-template-columns:.95fr 1.05fr;gap:14px;align-items:start}
+      .contentGrid .panel{margin-top:0}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="top">
+      <div>
+        <div class="eyebrow">Our Money Tracker</div>
+        <h1>See where the money goes</h1>
+      </div>
+      <button class="iconbtn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+    </header>
+
+    <section class="hero">
+      <small>Current money</small>
+      <div class="balance" id="balance">$0.00</div>
+      <div class="heroStats">
+        <div class="heroStat"><span>Money in</span><strong id="moneyIn">$0.00</strong></div>
+        <div class="heroStat"><span>Money spent</span><strong id="moneyOut">$0.00</strong></div>
+      </div>
+    </section>
+
+    <section id="startNotice" class="notice hidden">
+      <b>Start with the money you already have</b>
+      <p>Enter what you have right now, then add income and spending as it happens.</p>
+      <button id="startBtn">Add Starting Money</button>
+    </section>
+
+    <div class="actions">
+      <button class="action add" id="addBtn">＋ Add Money</button>
+      <button class="action spend" id="spendBtn">− Spend Money</button>
+    </div>
+
+    <div class="chips" aria-label="Time filter">
+      <button class="chip active" data-filter="all">All Time</button>
+      <button class="chip" data-filter="month">This Month</button>
+      <button class="chip" data-filter="week">This Week</button>
+    </div>
+
+    <div class="contentGrid" style="margin-top:14px">
+      <section class="panel">
+        <div class="panelHead">
+          <div>
+            <h2>Where it went</h2>
+            <div class="sub" id="biggest">No spending yet</div>
+          </div>
+        </div>
+        <div id="breakdown" class="breakdown"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panelHead">
+          <div>
+            <h2>Money history</h2>
+            <div class="sub" id="countLabel">0 transactions</div>
+          </div>
+        </div>
+        <input class="search" id="search" type="search" placeholder="Search gas, snack, side job…">
+        <div id="history" class="history"></div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="entryDialog">
+    <div class="sheetWrap">
+      <section class="sheet">
+        <div class="grab"></div>
+        <div class="sheetHead">
+          <h2 id="entryTitle">Add Money</h2>
+          <button class="close" id="entryClose" aria-label="Close">×</button>
+        </div>
+        <form class="form" id="entryForm">
+          <input type="hidden" id="editId">
+          <input type="hidden" id="txType">
+          <div>
+            <label for="amount">Amount</label>
+            <input class="field moneyInput" id="amount" inputmode="decimal" placeholder="$0.00" required>
+          </div>
+          <div class="row2">
+            <div>
+              <label for="date">Date</label>
+              <input class="field" id="date" type="date" required>
+            </div>
+            <div>
+              <label for="category">Category</label>
+              <select class="field" id="category" required></select>
+            </div>
+          </div>
+          <div>
+            <label for="note">What was it? <span style="color:var(--muted);font-weight:500">optional</span></label>
+            <input class="field" id="note" maxlength="80" placeholder="Example: Shell gas">
+          </div>
+          <button class="save" id="saveBtn" type="submit">Save</button>
+          <button class="danger hidden" id="deleteBtn" type="button">Delete This Entry</button>
+        </form>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <div class="sheetWrap">
+      <section class="sheet">
+        <div class="grab"></div>
+        <div class="sheetHead">
+          <h2>Settings & Backup</h2>
+          <button class="close" id="settingsClose" aria-label="Close">×</button>
+        </div>
+        <div class="settingsBlock">
+          <h3>Your data stays on this device</h3>
+          <p>Your money entries are stored in this browser on your phone. No bank login is required. Clearing website data can erase them, so export a backup once in a while.</p>
+          <div class="settingsActions">
+            <button class="secondary" id="exportBtn">Export CSV Backup</button>
+          </div>
+        </div>
+        <div class="settingsBlock">
+          <h3>Add to iPhone Home Screen</h3>
+          <p>Open this page in Safari, tap the Share button, choose <b>Add to Home Screen</b>, then tap Add. It will open like its own app.</p>
+        </div>
+        <div class="settingsBlock">
+          <h3>Reset</h3>
+          <p>This permanently removes every money entry saved in this app on this device.</p>
+          <div class="settingsActions">
+            <button class="danger" id="resetBtn">Erase All Money Data</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <script>
+  (function(){
+    'use strict';
+    var KEY='ourMoneyTracker.transactions.v1';
+    var filter='all';
+    var transactions=load();
+    var incomeCats=['Starting Money','Side Job','Paycheck','Sold Something','Cash','Other Income'];
+    var expenseCats=['Gas','Food / Snacks','Groceries','Bills','Truck / Auto','Tools / Work','Kids / Family','Shopping','Entertainment','Other'];
+    var el=function(id){return document.getElementById(id)};
+    var fmt=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+    function money(n){return fmt.format(Number(n)||0)}
+    function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+    function load(){try{var x=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}}
+    function save(){localStorage.setItem(KEY,JSON.stringify(transactions))}
+    function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
+    function prettyDate(s){var p=s.split('-');if(p.length!==3)return s;return new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'}).format(new Date(Date.UTC(+p[0],+p[1]-1,+p[2])))}
+    function inRange(t){
+      if(filter==='all')return true;
+      var p=t.date.split('-').map(Number), td=new Date(p[0],p[1]-1,p[2]), now=new Date();
+      if(filter==='month')return td.getFullYear()===now.getFullYear()&&td.getMonth()===now.getMonth();
+      var start=new Date(now);var day=(now.getDay()+6)%7;start.setHours(0,0,0,0);start.setDate(now.getDate()-day);
+      var end=new Date(start);end.setDate(start.getDate()+7);
+      return td>=start&&td<end;
+    }
+    function totals(list){
+      var inc=0,out=0,cats={};
+      list.forEach(function(t){if(t.type==='income')inc+=t.amount;else{out+=t.amount;cats[t.category]=(cats[t.category]||0)+t.amount}});
+      return {inc:inc,out:out,cats:cats};
+    }
+    function currentBalance(){var x=totals(transactions);return x.inc-x.out}
+    function render(){
+      var all=totals(transactions);
+      el('balance').textContent=money(all.inc-all.out);
+      el('moneyIn').textContent=money(all.inc);
+      el('moneyOut').textContent=money(all.out);
+      el('startNotice').classList.toggle('hidden',transactions.length>0);
+      var visible=transactions.filter(inRange);
+      renderBreakdown(visible);
+      renderHistory(visible);
+    }
+    function renderBreakdown(list){
+      var x=totals(list), entries=Object.entries(x.cats).sort(function(a,b){return b[1]-a[1]});
+      var box=el('breakdown');
+      if(!entries.length){box.innerHTML='<div class="empty">No spending in this time period yet.</div>';el('biggest').textContent='No spending yet';return}
+      el('biggest').textContent='Biggest: '+entries[0][0]+' · '+money(entries[0][1]);
+      box.innerHTML=entries.map(function(row){
+        var pct=x.out?Math.round(row[1]/x.out*100):0;
+        return '<div class="barrow"><div class="barlabel"><b>'+esc(row[0])+'</b><span>'+money(row[1])+' · '+pct+'%</span></div><div class="track"><div class="fill" style="width:'+Math.max(3,pct)+'%"></div></div></div>'
+      }).join('');
+    }
+    function renderHistory(list){
+      var q=el('search').value.trim().toLowerCase();
+      var shown=list.filter(function(t){return !q||(t.category+' '+(t.note||'')).toLowerCase().indexOf(q)>=0})
+        .slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.created-a.created});
+      el('countLabel').textContent=shown.length+' transaction'+(shown.length===1?'':'s');
+      if(!shown.length){el('history').innerHTML='<div class="empty">Nothing to show here yet.</div>';return}
+      el('history').innerHTML=shown.map(function(t){
+        var inn=t.type==='income';
+        return '<div class="tx"><div class="txIcon '+(inn?'in':'out')+'">'+(inn?'↑':'↓')+'</div><div class="txMain"><div class="txTitle">'+esc(t.category)+'</div><div class="txMeta">'+prettyDate(t.date)+(t.note?' · '+esc(t.note):'')+'</div></div><div class="txRight"><div class="amt '+(inn?'in':'out')+'">'+(inn?'+':'−')+money(t.amount)+'</div><button class="edit" data-edit="'+esc(t.id)+'">Edit</button></div></div>'
+      }).join('');
+    }
+    function fillCategories(type, selected){
+      var list=type==='income'?incomeCats:expenseCats;
+      el('category').innerHTML=list.map(function(c){return '<option value="'+esc(c)+'" '+(c===selected?'selected':'')+'>'+esc(c)+'</option>'}).join('');
+    }
+    function openEntry(type, existing){
+      var isEdit=!!existing;
+      el('entryTitle').textContent=isEdit?'Edit Entry':(type==='income'?'Add Money':'Spend Money');
+      el('txType').value=type;
+      el('editId').value=isEdit?existing.id:'';
+      el('amount').value=isEdit?existing.amount.toFixed(2):'';
+      el('date').value=isEdit?existing.date:today();
+      el('note').value=isEdit?(existing.note||''):'';
+      fillCategories(type,isEdit?existing.category:(type==='income'?'Side Job':'Gas'));
+      el('deleteBtn').classList.toggle('hidden',!isEdit);
+      el('saveBtn').textContent=isEdit?'Save Changes':(type==='income'?'Add Money':'Add Expense');
+      el('entryDialog').showModal();
+      setTimeout(function(){el('amount').focus()},100);
+    }
+    function closeDialog(d){if(d.open)d.close()}
+    el('addBtn').addEventListener('click',function(){openEntry('income')});
+    el('spendBtn').addEventListener('click',function(){openEntry('expense')});
+    el('startBtn').addEventListener('click',function(){openEntry('income',{id:'',type:'income',amount:0,date:today(),category:'Starting Money',note:'',created:Date.now()});el('editId').value='';el('deleteBtn').classList.add('hidden');el('entryTitle').textContent='Starting Money'});
+    el('entryClose').addEventListener('click',function(){closeDialog(el('entryDialog'))});
+    el('settingsBtn').addEventListener('click',function(){el('settingsDialog').showModal()});
+    el('settingsClose').addEventListener('click',function(){closeDialog(el('settingsDialog'))});
+    [el('entryDialog'),el('settingsDialog')].forEach(function(d){d.addEventListener('click',function(e){if(e.target===d)closeDialog(d)})});
+    el('entryForm').addEventListener('submit',function(e){
+      e.preventDefault();
+      var amount=parseFloat(String(el('amount').value).replace(/[$,\s]/g,''));
+      if(!isFinite(amount)||amount<=0){alert('Enter an amount greater than $0.');return}
+      if(!el('date').value){alert('Choose a date.');return}
+      var id=el('editId').value, item={
+        id:id||String(Date.now())+Math.random().toString(16).slice(2),
+        type:el('txType').value,amount:Math.round(amount*100)/100,date:el('date').value,
+        category:el('category').value,note:el('note').value.trim(),created:Date.now()
+      };
+      if(id){var idx=transactions.findIndex(function(t){return t.id===id});if(idx>=0){item.created=transactions[idx].created||Date.now();transactions[idx]=item}}
+      else transactions.push(item);
+      save();render();closeDialog(el('entryDialog'));
+    });
+    el('history').addEventListener('click',function(e){
+      var b=e.target.closest('[data-edit]');if(!b)return;
+      var t=transactions.find(function(x){return x.id===b.dataset.edit});if(t)openEntry(t.type,t);
+    });
+    el('deleteBtn').addEventListener('click',function(){
+      var id=el('editId').value;if(!id)return;
+      if(confirm('Delete this money entry?')){transactions=transactions.filter(function(t){return t.id!==id});save();render();closeDialog(el('entryDialog'))}
+    });
+    document.querySelectorAll('[data-filter]').forEach(function(b){b.addEventListener('click',function(){
+      filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(function(x){x.classList.toggle('active',x===b)});render();
+    })});
+    el('search').addEventListener('input',render);
+    el('exportBtn').addEventListener('click',function(){
+      if(!transactions.length){alert('There is no money data to export yet.');return}
+      var rows=[['Date','Type','Category','Note','Amount']];
+      transactions.slice().sort(function(a,b){return a.date.localeCompare(b.date)}).forEach(function(t){rows.push([t.date,t.type,t.category,t.note||'',t.amount.toFixed(2)])});
+      var csv=rows.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"'}).join(',')}).join('\r\n');
+      var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download='our-money-tracker-backup-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);
+    });
+    el('resetBtn').addEventListener('click',function(){
+      if(confirm('Erase ALL money entries from this device? This cannot be undone.')&&confirm('Are you sure?')){
+        transactions=[];save();render();closeDialog(el('settingsDialog'));
+      }
+    });
+    if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js').catch(function(){})})}
+    render();
+  })();
+  </script>
+</body>
+</html>
