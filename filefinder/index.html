@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Search it, then tap a result to highlight that word on the page.</div>
+        <div class="sub">Highlights the word but keeps the surrounding rows visible.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -498,7 +498,7 @@
           const source=await freshSourceBlob(doc);
           const pdf=await pdfjsLib.getDocument({data:await source.arrayBuffer()}).promise;
           const page=await pdf.getPage(pageNum);
-          const vp=page.getViewport({scale:2.2});
+          const vp=page.getViewport({scale:1.55});
           const c=document.createElement('canvas');
           c.width=Math.floor(vp.width);
           c.height=Math.floor(vp.height);
@@ -520,7 +520,7 @@
           const holder=document.createElement('div');
           holder.style.position='relative';
           holder.style.overflow='auto';
-          holder.style.maxHeight='72vh';
+          holder.style.maxHeight='80vh';
           holder.style.borderRadius='10px';
           holder.appendChild(c);
           body.appendChild(holder);
@@ -528,14 +528,15 @@
           if(hi.first){
             requestAnimationFrame(()=>{
               const scaleY=c.getBoundingClientRect().height/c.height;
-              const target=Math.max(0,(hi.first.y*scaleY)-120);
+              const visibleH=holder.clientHeight||window.innerHeight*0.8;
+              const target=Math.max(0,(hi.first.y*scaleY)-(visibleH*0.35));
               holder.scrollTop=target;
             });
           }
         }else if(doc.type.startsWith('image/')){
           const source=await freshSourceBlob(doc);
           const img=await createImageBitmap(source);
-          const maxW=1400;
+          const maxW=1050;
           const scale=Math.min(1,maxW/img.width);
           const c=document.createElement('canvas');
           c.width=Math.floor(img.width*scale);
@@ -558,7 +559,7 @@
           const holder=document.createElement('div');
           holder.style.position='relative';
           holder.style.overflow='auto';
-          holder.style.maxHeight='72vh';
+          holder.style.maxHeight='80vh';
           holder.style.borderRadius='10px';
           holder.appendChild(c);
           body.appendChild(holder);
@@ -566,7 +567,8 @@
           if(hi.first){
             requestAnimationFrame(()=>{
               const scaleY=c.getBoundingClientRect().height/c.height;
-              holder.scrollTop=Math.max(0,(hi.first.y*scaleY)-120);
+              const visibleH=holder.clientHeight||window.innerHeight*0.8;
+              holder.scrollTop=Math.max(0,(hi.first.y*scaleY)-(visibleH*0.35));
             });
           }
         }else{
