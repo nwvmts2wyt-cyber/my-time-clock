@@ -1,0 +1,10 @@
+{
+  "name": "PickEdge",
+  "short_name": "PickEdge",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08101d",
+  "theme_color": "#0b1020",
+  "description": "Manual player-prop research and slip builder."
+}
