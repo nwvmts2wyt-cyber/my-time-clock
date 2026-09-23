@@ -172,6 +172,30 @@
     function escRegex(s){return s.replace(/[.*+?^$()|[\]\\{}]/g,'\\$&')}
     function totalPages(doc){return doc.pages?doc.pages.length:0}
 
+    // iPhone/Safari can lose a File/Blob handle after it has been saved in IndexedDB.
+    // Store the actual bytes instead, then build a fresh Blob whenever we need to
+    // render or rescan the original file.
+    async function ensureStoredBytes(doc){
+      if(doc.bytes && doc.bytes.byteLength) return doc.bytes;
+      if(doc.blob){
+        try{
+          const bytes=new Uint8Array(await doc.blob.arrayBuffer());
+          doc.bytes=bytes;
+          try{ delete doc.blob; }catch(_){ doc.blob=null; }
+          await putDoc(doc);
+          return bytes;
+        }catch(e){
+          throw new Error('This older saved copy lost its PDF data on iPhone. Upload this file one more time and the preview will stay fixed.');
+        }
+      }
+      throw new Error('The original file data is missing. Upload this file one more time.');
+    }
+
+    async function freshSourceBlob(doc){
+      const bytes=await ensureStoredBytes(doc);
+      return new Blob([bytes],{type:doc.type||'application/octet-stream'});
+    }
+
     function renderFilters(){
       const parts=[{id:'all',name:'All files'}].concat(docs.map(d=>({id:d.id,name:d.name})));
       $('filters').innerHTML='';
@@ -464,14 +488,16 @@
     }
 
     async function processFile(file){
-      const doc={id:uid(),name:file.name,type:file.type||'',size:file.size,createdAt:Date.now(),pages:[],pageCount:0,status:'processing',progress:0,blob:file};
+      const storedBytes=new Uint8Array(await file.arrayBuffer());
+      const doc={id:uid(),name:file.name,type:file.type||'',size:file.size,createdAt:Date.now(),pages:[],pageCount:0,status:'processing',progress:0,bytes:storedBytes};
       docs.unshift(doc);await putDoc(doc);renderFilters();renderFileList();
       try{
         const name=file.name.toLowerCase();
-        if(file.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(file,doc);
-        else if(name.endsWith('.docx')) await processDOCX(file,doc);
-        else if(file.type.startsWith('image/')) await processImage(file,doc);
-        else if(/\.(txt|csv|json|md|html|htm|xml|log)$/i.test(name)||file.type.startsWith('text/')) await processText(file,doc);
+        const source=new Blob([storedBytes],{type:file.type||'application/octet-stream'});
+        if(file.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(source,doc);
+        else if(name.endsWith('.docx')) await processDOCX(source,doc);
+        else if(file.type.startsWith('image/')) await processImage(source,doc);
+        else if(/\.(txt|csv|json|md|html|htm|xml|log)$/i.test(name)||file.type.startsWith('text/')) await processText(source,doc);
         else throw new Error('That file type is not supported yet.');
         doc.status='ready';doc.progress=100;await putDoc(doc);docs=docs.map(d=>d.id===doc.id?doc:d);
         setProgress(100,'Ready: '+file.name);setTimeout(()=>setProgress(null,'Ready to search.'),900);
@@ -497,8 +523,9 @@
         const name=doc.name.toLowerCase();
         const pageData=(doc.pages||[]).find(x=>x.page===pageNum)||doc.pages[0];
 
-        if((doc.type==='application/pdf'||name.endsWith('.pdf'))&&doc.blob){
-          const pdf=await pdfjsLib.getDocument({data:await doc.blob.arrayBuffer()}).promise;
+        if(doc.type==='application/pdf'||name.endsWith('.pdf')){
+          const source=await freshSourceBlob(doc);
+          const pdf=await pdfjsLib.getDocument({data:await source.arrayBuffer()}).promise;
           const page=await pdf.getPage(pageNum);
           const vp=page.getViewport({scale:2.2});
           const c=document.createElement('canvas');
@@ -534,8 +561,9 @@
               holder.scrollTop=target;
             });
           }
-        }else if(doc.type.startsWith('image/')&&doc.blob){
-          const img=await createImageBitmap(doc.blob);
+        }else if(doc.type.startsWith('image/')){
+          const source=await freshSourceBlob(doc);
+          const img=await createImageBitmap(source);
           const maxW=1400;
           const scale=Math.min(1,maxW/img.width);
           const c=document.createElement('canvas');
@@ -598,15 +626,15 @@
           if(confirm('Delete '+d.name+' from File Finder?')){await deleteDoc(d.id);docs=docs.filter(x=>x.id!==d.id);if(selected===d.id)selected='all';renderFileList();renderFilters();runSearch()}
         };
         const rescan=document.createElement('button');rescan.className='smallBtn';rescan.textContent='Rescan';rescan.onclick=async()=>{
-          if(!d.blob){alert('This saved file cannot be rescanned. Delete it and upload it again.');return}
           $('filesModal').classList.remove('open');
           d.status='processing';d.pages=[];await putDoc(d);docs=docs.map(x=>x.id===d.id?d:x);runSearch();
           try{
             const name=d.name.toLowerCase();
-            if(d.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(d.blob,d);
-            else if(d.type.startsWith('image/')) await processImage(d.blob,d);
-            else if(name.endsWith('.docx')) await processDOCX(d.blob,d);
-            else await processText(d.blob,d);
+            const source=await freshSourceBlob(d);
+            if(d.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(source,d);
+            else if(d.type.startsWith('image/')) await processImage(source,d);
+            else if(name.endsWith('.docx')) await processDOCX(source,d);
+            else await processText(source,d);
             d.status='ready';d.progress=100;d.ocrVersion=5;await putDoc(d);
             docs=docs.map(x=>x.id===d.id?d:x);
             setProgress(null,'Rescan complete. Search again.');
