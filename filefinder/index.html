@@ -365,9 +365,11 @@
       const sy=canvas.height/(pageData.sourceHeight||canvas.height);
       let hits=0,first=null;
       ctx.save();
-      ctx.fillStyle='rgba(255,235,59,.70)';
-      ctx.strokeStyle='rgba(255,145,0,1)';
-      ctx.lineWidth=Math.max(3,canvas.width/360);
+      // Keep the word readable: light transparent yellow with a strong outline.
+      // The previous 70% fill hid dark letters on scanned pages.
+      ctx.fillStyle='rgba(255,235,59,.24)';
+      ctx.strokeStyle='rgba(255,193,7,.95)';
+      ctx.lineWidth=Math.max(3,canvas.width/420);
       boxes.forEach(b=>{
         if(!wordMatchesQuery(b.text,q))return;
         const x=b.x0*sx,y=b.y0*sy,w=(b.x1-b.x0)*sx,h=(b.y1-b.y0)*sy;
