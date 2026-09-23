@@ -206,21 +206,51 @@
     }
 
     function snippetAround(text,q){
-      const low=text.toLowerCase(), needle=q.toLowerCase(), i=low.indexOf(needle);
+      const low=text.toLowerCase(), needle=q.toLowerCase();
+      let i=low.indexOf(needle), matchLen=needle.length;
+      // If OCR misread one character (for example S as 5 or O as 0),
+      // find the closest matching OCR token so the result snippet still centers on it.
+      if(i<0 && !/\\s/.test(q.trim())){
+        const re=/[A-Za-z0-9#._/-]+/g; let m;
+        while((m=re.exec(text))!==null){
+          if(wordMatchesQuery(m[0],q)){ i=m.index; matchLen=m[0].length; break; }
+        }
+      }
       if(i<0)return text.slice(0,180);
-      const start=Math.max(0,i-75), end=Math.min(text.length,i+needle.length+105);
+      const start=Math.max(0,i-75), end=Math.min(text.length,i+matchLen+105);
       return (start?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
     }
 
     function appendHighlighted(el,text,q){
       if(!q){el.textContent=text;return}
-      const re=new RegExp('('+escRegex(q)+')','ig'); let last=0,m;
-      while((m=re.exec(text))!==null){
-        if(m.index>last)el.appendChild(document.createTextNode(text.slice(last,m.index)));
-        const mark=document.createElement('mark');mark.textContent=m[0];el.appendChild(mark);last=m.index+m[0].length;
-        if(m[0].length===0)break;
+      const exact=new RegExp('('+escRegex(q)+')','ig');
+      const exactMatches=[...text.matchAll(exact)];
+      if(exactMatches.length){
+        let last=0;
+        for(const m of exactMatches){
+          if(m.index>last)el.appendChild(document.createTextNode(text.slice(last,m.index)));
+          const mark=document.createElement('mark');mark.textContent=m[0];el.appendChild(mark);
+          last=m.index+m[0].length;
+        }
+        if(last<text.length)el.appendChild(document.createTextNode(text.slice(last)));
+        return;
       }
-      if(last<text.length)el.appendChild(document.createTextNode(text.slice(last)));
+      // No exact text hit: highlight a longer OCR token that is only 1–2
+      // characters off. Short searches stay exact so TPO can never become TERM.
+      if(!/\\s/.test(q.trim())){
+        const re=/[A-Za-z0-9#._/-]+/g; let last=0,m,hit=false;
+        while((m=re.exec(text))!==null){
+          if(!wordMatchesQuery(m[0],q))continue;
+          if(m.index>last)el.appendChild(document.createTextNode(text.slice(last,m.index)));
+          const mark=document.createElement('mark');mark.textContent=m[0];el.appendChild(mark);
+          last=m.index+m[0].length;hit=true;
+        }
+        if(hit){
+          if(last<text.length)el.appendChild(document.createTextNode(text.slice(last)));
+          return;
+        }
+      }
+      el.textContent=text;
     }
 
     function runSearch(){
@@ -239,8 +269,7 @@
             const tokens=low.match(/[a-z0-9#._/-]+/g)||[];
             found=tokens.filter(t=>t===needle).length;
           }else{
-            // Exact text matching only. Do not "guess" nearby words:
-            // if the user searches TPO, TERM must never count as a hit.
+            // Exact match first. This keeps short roofing abbreviations precise.
             let from=0;
             while(true){
               const i=low.indexOf(needle,from);
@@ -249,6 +278,9 @@
               from=i+Math.max(1,needle.length);
               if(found>=20)break;
             }
+            // For longer words only, allow a very small OCR-error tolerance.
+            // Example: SECUROCK still matches if OCR stored 5ECUROCK or SECUR0CK.
+            if(!found && !/\\s/.test(q) && fuzzyHitsInText(text,q)) found=1;
           }
           if(found)matches.push({doc,page:p.page,text,count:found});
         }
@@ -316,14 +348,61 @@
       return out;
     }
 
+    function cleanSearchToken(v){
+      return String(v||'').toLowerCase().trim().replace(/[^a-z0-9#._/-]/g,'');
+    }
+
+    function canonicalOCRToken(v){
+      // Common scanner mistakes. Used only for longer searches.
+      return cleanSearchToken(v)
+        .replace(/0/g,'o')
+        .replace(/5/g,'s')
+        .replace(/8/g,'b')
+        .replace(/[1|]/g,'l');
+    }
+
+    function boundedEditDistance(a,b,limit){
+      if(Math.abs(a.length-b.length)>limit)return limit+1;
+      let prev=Array.from({length:b.length+1},(_,i)=>i);
+      for(let i=1;i<=a.length;i++){
+        const cur=[i]; let rowMin=cur[0];
+        for(let j=1;j<=b.length;j++){
+          const cost=a[i-1]===b[j-1]?0:1;
+          cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost);
+          if(cur[j]<rowMin)rowMin=cur[j];
+        }
+        if(rowMin>limit)return limit+1;
+        prev=cur;
+      }
+      return prev[b.length];
+    }
+
     function wordMatchesQuery(word,q){
-      const w=String(word||'').toLowerCase().replace(/[^a-z0-9#._/-]/g,'');
-      const n=String(q||'').toLowerCase().trim().replace(/[^a-z0-9#._/-]/g,'');
+      const rawQ=String(q||'').trim();
+      const w=cleanSearchToken(word);
+      const n=cleanSearchToken(rawQ);
       if(!w||!n)return false;
       if(n.length<=2)return w===n;
-      // Highlight only text that actually contains what was typed.
-      // No fuzzy OCR guessing here — it caused TPO to highlight TERM.
-      return w.includes(n);
+      if(w.includes(n))return true;
+
+      // Fuzzy matching is intentionally disabled for short searches/phrases.
+      // That preserves the earlier TPO fix: TPO will not match TERM.
+      const letters=(n.match(/[a-z]/g)||[]).length;
+      if(/\\s/.test(rawQ)||n.length<5||letters<3)return false;
+
+      const cw=canonicalOCRToken(w), cn=canonicalOCRToken(n);
+      if(cw.includes(cn))return true;
+      const limit=cn.length>=9?2:1;
+      if(Math.abs(cw.length-cn.length)>limit)return false;
+      return boundedEditDistance(cw,cn,limit)<=limit;
+    }
+
+    function fuzzyHitsInText(text,q){
+      const tokens=String(text||'').match(/[A-Za-z0-9#._/-]+/g)||[];
+      for(const token of tokens){
+        if(wordMatchesQuery(token,q))return true;
+      }
+      return false;
     }
 
     function drawHighlights(canvas,pageData,q){
