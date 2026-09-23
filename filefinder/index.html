@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Upload it once. Search every word.</div>
+        <div class="sub">Upload it once. Search words in text AND pictures.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -102,7 +102,7 @@
       <div class="count" id="resultCount"></div>
     </div>
     <div class="results" id="results">
-      <div class="empty">Upload a PDF, Word file, text file, or picture. Then type a word above.</div>
+      <div class="empty">Upload a PDF, Word file, or picture. I’ll read the words inside pictures too.</div>
     </div>
   </div>
 
@@ -230,35 +230,65 @@
     }
 
     async function makeOCRWorker(label){
-      return await Tesseract.createWorker('eng',1,{logger:m=>{
-        if(m.status==='recognizing text' && typeof m.progress==='number') statusEl.textContent=label+' OCR '+Math.round(m.progress*100)+'%';
+      const worker = await Tesseract.createWorker('eng',1,{logger:m=>{
+        if(m.status==='recognizing text' && typeof m.progress==='number') statusEl.textContent=label+' · reading words in pictures '+Math.round(m.progress*100)+'%';
       }});
+      try{
+        await worker.setParameters({
+          preserve_interword_spaces: '1'
+        });
+      }catch(e){}
+      return worker;
     }
 
     async function processPDF(file,doc){
       const data=await file.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data}).promise; doc.pageCount=pdf.numPages;
       let ocrWorker=null;
       try{
+        ocrWorker=await makeOCRWorker(file.name);
         for(let n=1;n<=pdf.numPages;n++){
-          setProgress(((n-1)/pdf.numPages)*100,'Reading '+file.name+' · page '+n+' of '+pdf.numPages);
-          const page=await pdf.getPage(n); const tc=await page.getTextContent();
-          let text=tc.items.map(x=>x.str).join(' ').replace(/\s+/g,' ').trim();
-          if(text.length<25){
-            if(!ocrWorker)ocrWorker=await makeOCRWorker(file.name+' · page '+n);
-            const vp=page.getViewport({scale:2}); const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
-            canvas.width=Math.floor(vp.width);canvas.height=Math.floor(vp.height);await page.render({canvasContext:ctx,viewport:vp}).promise;
-            const out=await ocrWorker.recognize(canvas); text=(out.data.text||'').replace(/\s+/g,' ').trim();
-          }
-          doc.pages.push({page:n,text}); doc.progress=Math.round(n/pdf.numPages*100); await putDoc(doc);
-          docs=docs.map(d=>d.id===doc.id?doc:d); if(activeQuery)runSearch();
+          setProgress(((n-1)/pdf.numPages)*100,'Reading ALL text, including pictures · page '+n+' of '+pdf.numPages);
+          const page=await pdf.getPage(n);
+
+          // Read normal selectable PDF text first.
+          const tc=await page.getTextContent();
+          const embedded=tc.items.map(x=>x.str).join(' ').replace(/\s+/g,' ').trim();
+
+          // ALWAYS OCR the visible page too. This is what makes words printed
+          // inside scans/photos searchable even when the PDF already contains
+          // some ordinary text elsewhere on the same page.
+          const vp=page.getViewport({scale:3});
+          const canvas=document.createElement('canvas');
+          const ctx=canvas.getContext('2d',{alpha:false});
+          canvas.width=Math.floor(vp.width);
+          canvas.height=Math.floor(vp.height);
+          ctx.fillStyle='#fff';
+          ctx.fillRect(0,0,canvas.width,canvas.height);
+          await page.render({canvasContext:ctx,viewport:vp}).promise;
+
+          const out=await ocrWorker.recognize(canvas);
+          const pictured=(out.data.text||'').replace(/\s+/g,' ').trim();
+
+          // Keep both sources. Searching is case-insensitive.
+          const text=(embedded+' '+pictured).replace(/\s+/g,' ').trim();
+          doc.pages.push({page:n,text});
+          doc.progress=Math.round(n/pdf.numPages*100);
+          await putDoc(doc);
+          docs=docs.map(d=>d.id===doc.id?doc:d);
+          if(activeQuery)runSearch();
         }
       } finally { if(ocrWorker)await ocrWorker.terminate(); }
     }
 
     async function processImage(file,doc){
       const worker=await makeOCRWorker(file.name);
-      try{const out=await worker.recognize(file);doc.pages=[{page:1,text:(out.data.text||'').replace(/\s+/g,' ').trim()}];doc.pageCount=1;await putDoc(doc)}
-      finally{await worker.terminate()}
+      try{
+        setProgress(10,'Reading words in picture: '+file.name);
+        const out=await worker.recognize(file);
+        doc.pages=[{page:1,text:(out.data.text||'').replace(/\s+/g,' ').trim()}];
+        doc.pageCount=1;
+        await putDoc(doc);
+      } finally { await worker.terminate(); }
     }
 
     async function processDOCX(file,doc){
