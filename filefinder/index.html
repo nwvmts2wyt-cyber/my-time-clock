@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d10" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="File Finder" />
+  <title>File Finder</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <style>
+    :root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;background:#0b0d10;color:#f5f7fa;min-height:100vh;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+    button,input,select{font:inherit}
+    .wrap{max-width:820px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 14px 24px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+    h1{font-size:28px;margin:0;letter-spacing:-.5px}
+    .sub{color:#a7afb9;font-size:14px;margin-top:4px}
+    .ghost{border:1px solid #343941;background:#171a1f;color:#fff;border-radius:12px;padding:10px 12px;font-weight:700}
+    .hero{background:linear-gradient(180deg,#161a20,#101318);border:1px solid #272c34;border-radius:20px;padding:16px;box-shadow:0 12px 34px rgba(0,0,0,.22)}
+    .searchRow{display:flex;gap:10px}
+    .searchBox{position:relative;flex:1}
+    .searchBox input{width:100%;height:54px;border:1px solid #323843;border-radius:15px;background:#0d1014;color:white;padding:0 48px 0 15px;font-size:18px;outline:none}
+    .searchBox input:focus{border-color:#7f8cff;box-shadow:0 0 0 3px rgba(127,140,255,.15)}
+    .clearBtn{position:absolute;right:8px;top:8px;width:38px;height:38px;border:0;border-radius:11px;background:#242a31;color:#dce2ea;font-size:19px}
+    .uploadBtn{height:54px;border:0;border-radius:15px;background:#6f7cff;color:#fff;font-weight:800;padding:0 16px;white-space:nowrap}
+    #fileInput{display:none}
+    .filters{display:flex;gap:8px;margin-top:10px;overflow:auto;padding-bottom:2px}
+    .chip{border:1px solid #303641;background:#15191e;color:#cfd5dd;border-radius:999px;padding:8px 11px;font-size:13px;white-space:nowrap}
+    .chip.active{background:#f3f5f8;color:#0b0d10;border-color:#f3f5f8;font-weight:800}
+    .status{min-height:24px;margin:12px 2px 0;color:#aab2bc;font-size:13px}
+    .progress{height:6px;background:#20252c;border-radius:999px;overflow:hidden;margin-top:8px;display:none}
+    .bar{height:100%;width:0;background:#7f8cff;transition:width .2s}
+    .sectionTitle{display:flex;align-items:center;justify-content:space-between;margin:20px 2px 10px}
+    .sectionTitle h2{font-size:18px;margin:0}
+    .count{font-size:13px;color:#98a1ad}
+    .results{display:grid;gap:10px}
+    .card{background:#14181d;border:1px solid #282e36;border-radius:16px;padding:14px;text-align:left;color:#fff;width:100%}
+    .card:active{transform:scale(.995)}
+    .topline{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .fname{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw}
+    .page{font-size:12px;color:#aab2bd;white-space:nowrap}
+    .snippet{margin-top:8px;color:#c7ced7;line-height:1.42;font-size:14px;word-break:break-word}
+    mark{background:#ffe45c;color:#111;padding:0 2px;border-radius:3px}
+    .empty{padding:34px 18px;text-align:center;color:#9ba4af;border:1px dashed #343a43;border-radius:16px}
+    .bottom{position:fixed;left:0;right:0;bottom:0;background:rgba(11,13,16,.92);backdrop-filter:blur(14px);border-top:1px solid #242a31;padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:15}
+    .bottomInner{max-width:820px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .navBtn{height:48px;border:1px solid #343a42;background:#171b20;color:white;border-radius:14px;font-weight:800}
+    .navBtn.primary{background:#6f7cff;border-color:#6f7cff}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:40;display:none;align-items:flex-end}
+    .modal.open{display:flex}
+    .sheet{width:100%;max-height:92vh;overflow:auto;background:#101318;border-radius:22px 22px 0 0;border:1px solid #2d333b;padding:16px 14px calc(20px + env(safe-area-inset-bottom))}
+    .sheetInner{max-width:820px;margin:0 auto}
+    .sheetHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .sheetHead h3{margin:0;font-size:20px}
+    .close{border:0;background:#252b33;color:white;border-radius:12px;width:40px;height:40px}
+    .fileRow{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #252a31}
+    .fileInfo{flex:1;min-width:0}
+    .fileName{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .meta{font-size:12px;color:#9ca5b0;margin-top:4px}
+    .smallBtn{border:1px solid #343a42;background:#171b20;color:white;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700}
+    .danger{color:#ff8e8e}
+    .previewBody{padding-bottom:20px}
+    canvas{display:block;max-width:100%;height:auto;margin:0 auto;background:white;border-radius:8px}
+    .previewText{white-space:pre-wrap;background:#0a0c0f;border:1px solid #2b3139;border-radius:14px;padding:14px;line-height:1.5;color:#d8dee6}
+    .installSteps{line-height:1.6;color:#d5dbe3}
+    .installSteps strong{color:white}
+    .note{font-size:12px;color:#8f98a4;margin-top:12px}
+    @media(max-width:520px){.searchRow{display:grid;grid-template-columns:1fr}.uploadBtn{width:100%}.fname{max-width:62vw}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>File Finder</h1>
+        <div class="sub">Upload it once. Search every word.</div>
+      </div>
+      <button class="ghost" id="installBtn">Install</button>
+    </header>
+
+    <section class="hero">
+      <div class="searchRow">
+        <div class="searchBox">
+          <input id="searchInput" type="search" placeholder="Search any word or phrase…" autocomplete="off" />
+          <button id="clearSearch" class="clearBtn" aria-label="Clear search">×</button>
+        </div>
+        <button class="uploadBtn" id="uploadBtn">+ Upload File</button>
+        <input id="fileInput" type="file" multiple accept=".pdf,.docx,.txt,.csv,.json,.md,.html,image/*" />
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="status" id="status">Files stay on this device.</div>
+      <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    </section>
+
+    <div class="sectionTitle">
+      <h2 id="resultsTitle">Search results</h2>
+      <div class="count" id="resultCount"></div>
+    </div>
+    <div class="results" id="results">
+      <div class="empty">Upload a PDF, Word file, text file, or picture. Then type a word above.</div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="bottomInner">
+      <button class="navBtn" id="myFilesBtn">My Files</button>
+      <button class="navBtn primary" id="bottomUploadBtn">Upload File</button>
+    </div>
+  </div>
+
+  <div class="modal" id="filesModal">
+    <div class="sheet"><div class="sheetInner">
+      <div class="sheetHead"><h3>My Files</h3><button class="close" data-close="filesModal">×</button></div>
+      <div id="fileList"></div>
+      <div class="note">Processed text is saved in this browser so you can search it again later.</div>
+    </div></div>
+  </div>
+
+  <div class="modal" id="previewModal">
+    <div class="sheet"><div class="sheetInner">
+      <div class="sheetHead"><h3 id="previewTitle">Preview</h3><button class="close" data-close="previewModal">×</button></div>
+      <div class="previewBody" id="previewBody"></div>
+    </div></div>
+  </div>
+
+  <div class="modal" id="installModal">
+    <div class="sheet"><div class="sheetInner">
+      <div class="sheetHead"><h3>Add File Finder to Home Screen</h3><button class="close" data-close="installModal">×</button></div>
+      <div class="installSteps">
+        <strong>On iPhone:</strong><br>
+        1. Open this page in Safari.<br>
+        2. Tap the <strong>Share</strong> button.<br>
+        3. Scroll down and tap <strong>Add to Home Screen</strong>.<br>
+        4. Tap <strong>Add</strong>.<br><br>
+        After that it opens like an app from your Home Screen.
+      </div>
+    </div></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const DB_NAME='file-finder-db', STORE='docs';
+    let db, docs=[], selected='all', installPrompt=null, activeQuery='';
+
+    const $ = id => document.getElementById(id);
+    const statusEl=$('status'), progressEl=$('progress'), bar=$('bar'), resultsEl=$('results');
+
+    function openDB(){
+      return new Promise((resolve,reject)=>{
+        const req=indexedDB.open(DB_NAME,1);
+        req.onupgradeneeded=()=>{ const d=req.result; if(!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE,{keyPath:'id'}); };
+        req.onsuccess=()=>resolve(req.result); req.onerror=()=>reject(req.error);
+      });
+    }
+    function tx(mode='readonly'){return db.transaction(STORE,mode).objectStore(STORE)}
+    function putDoc(doc){return new Promise((res,rej)=>{const r=tx('readwrite').put(doc);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+    function deleteDoc(id){return new Promise((res,rej)=>{const r=tx('readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+    function getAllDocs(){return new Promise((res,rej)=>{const r=tx().getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)})}
+
+    function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+    function fmtBytes(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+    function setProgress(p,msg){progressEl.style.display=p===null?'none':'block';if(p!==null)bar.style.width=Math.max(0,Math.min(100,p))+'%';if(msg)statusEl.textContent=msg}
+    function escRegex(s){return s.replace(/[.*+?^$()|[\]\\{}]/g,'\\$&')}
+    function totalPages(doc){return doc.pages?doc.pages.length:0}
+
+    function renderFilters(){
+      const parts=[{id:'all',name:'All files'}].concat(docs.map(d=>({id:d.id,name:d.name})));
+      $('filters').innerHTML='';
+      parts.forEach(p=>{
+        const b=document.createElement('button'); b.className='chip'+(selected===p.id?' active':''); b.textContent=p.name;
+        b.onclick=()=>{selected=p.id;renderFilters();runSearch()}; $('filters').appendChild(b);
+      });
+    }
+
+    function snippetAround(text,q){
+      const low=text.toLowerCase(), needle=q.toLowerCase(), i=low.indexOf(needle);
+      if(i<0)return text.slice(0,180);
+      const start=Math.max(0,i-75), end=Math.min(text.length,i+needle.length+105);
+      return (start?'…':'')+text.slice(start,end)+(end<text.length?'…':'');
+    }
+
+    function appendHighlighted(el,text,q){
+      if(!q){el.textContent=text;return}
+      const re=new RegExp('('+escRegex(q)+')','ig'); let last=0,m;
+      while((m=re.exec(text))!==null){
+        if(m.index>last)el.appendChild(document.createTextNode(text.slice(last,m.index)));
+        const mark=document.createElement('mark');mark.textContent=m[0];el.appendChild(mark);last=m.index+m[0].length;
+        if(m[0].length===0)break;
+      }
+      if(last<text.length)el.appendChild(document.createTextNode(text.slice(last)));
+    }
+
+    function runSearch(){
+      const q=$('searchInput').value.trim(); activeQuery=q; resultsEl.innerHTML='';
+      if(!q){
+        $('resultCount').textContent='';
+        $('resultsTitle').textContent='Search results';
+        resultsEl.innerHTML='<div class="empty">Type a word or phrase to search your saved files.</div>'; return;
+      }
+      const matches=[];
+      const pool=selected==='all'?docs:docs.filter(d=>d.id===selected);
+      for(const doc of pool){
+        for(const p of (doc.pages||[])){
+          const text=p.text||''; const low=text.toLowerCase(), needle=q.toLowerCase(); let from=0, found=0;
+          while(true){const i=low.indexOf(needle,from);if(i<0)break;found++;from=i+Math.max(1,needle.length);if(found>=20)break}
+          if(found)matches.push({doc,page:p.page,text,count:found});
+        }
+      }
+      $('resultCount').textContent=matches.length+' page'+(matches.length===1?'':'s');
+      $('resultsTitle').textContent='Search results';
+      if(!matches.length){resultsEl.innerHTML='<div class="empty">No matches. Try part of the word or material number.</div>';return}
+      matches.forEach(m=>{
+        const c=document.createElement('button');c.className='card';
+        const top=document.createElement('div');top.className='topline';
+        const fn=document.createElement('div');fn.className='fname';fn.textContent=m.doc.name;
+        const pg=document.createElement('div');pg.className='page';pg.textContent='Page '+m.page+(m.count>1?' · '+m.count+' hits':'');
+        top.append(fn,pg);
+        const sn=document.createElement('div');sn.className='snippet';appendHighlighted(sn,snippetAround(m.text,q),q);
+        c.append(top,sn);c.onclick=()=>preview(m.doc,m.page,q);resultsEl.appendChild(c);
+      });
+    }
+
+    async function makeOCRWorker(label){
+      return await Tesseract.createWorker('eng',1,{logger:m=>{
+        if(m.status==='recognizing text' && typeof m.progress==='number') statusEl.textContent=label+' OCR '+Math.round(m.progress*100)+'%';
+      }});
+    }
+
+    async function processPDF(file,doc){
+      const data=await file.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data}).promise; doc.pageCount=pdf.numPages;
+      let ocrWorker=null;
+      try{
+        for(let n=1;n<=pdf.numPages;n++){
+          setProgress(((n-1)/pdf.numPages)*100,'Reading '+file.name+' · page '+n+' of '+pdf.numPages);
+          const page=await pdf.getPage(n); const tc=await page.getTextContent();
+          let text=tc.items.map(x=>x.str).join(' ').replace(/\s+/g,' ').trim();
+          if(text.length<25){
+            if(!ocrWorker)ocrWorker=await makeOCRWorker(file.name+' · page '+n);
+            const vp=page.getViewport({scale:2}); const canvas=document.createElement('canvas'); const ctx=canvas.getContext('2d');
+            canvas.width=Math.floor(vp.width);canvas.height=Math.floor(vp.height);await page.render({canvasContext:ctx,viewport:vp}).promise;
+            const out=await ocrWorker.recognize(canvas); text=(out.data.text||'').replace(/\s+/g,' ').trim();
+          }
+          doc.pages.push({page:n,text}); doc.progress=Math.round(n/pdf.numPages*100); await putDoc(doc);
+          docs=docs.map(d=>d.id===doc.id?doc:d); if(activeQuery)runSearch();
+        }
+      } finally { if(ocrWorker)await ocrWorker.terminate(); }
+    }
+
+    async function processImage(file,doc){
+      const worker=await makeOCRWorker(file.name);
+      try{const out=await worker.recognize(file);doc.pages=[{page:1,text:(out.data.text||'').replace(/\s+/g,' ').trim()}];doc.pageCount=1;await putDoc(doc)}
+      finally{await worker.terminate()}
+    }
+
+    async function processDOCX(file,doc){
+      const arr=await file.arrayBuffer(); const r=await mammoth.extractRawText({arrayBuffer:arr});
+      doc.pages=[{page:1,text:(r.value||'').replace(/\s+/g,' ').trim()}];doc.pageCount=1;await putDoc(doc);
+    }
+
+    async function processText(file,doc){
+      const text=await file.text();doc.pages=[{page:1,text}];doc.pageCount=1;await putDoc(doc);
+    }
+
+    async function processFile(file){
+      const doc={id:uid(),name:file.name,type:file.type||'',size:file.size,createdAt:Date.now(),pages:[],pageCount:0,status:'processing',progress:0,blob:file};
+      docs.unshift(doc);await putDoc(doc);renderFilters();renderFileList();
+      try{
+        const name=file.name.toLowerCase();
+        if(file.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(file,doc);
+        else if(name.endsWith('.docx')) await processDOCX(file,doc);
+        else if(file.type.startsWith('image/')) await processImage(file,doc);
+        else if(/\.(txt|csv|json|md|html|htm|xml|log)$/i.test(name)||file.type.startsWith('text/')) await processText(file,doc);
+        else throw new Error('That file type is not supported yet.');
+        doc.status='ready';doc.progress=100;await putDoc(doc);docs=docs.map(d=>d.id===doc.id?doc:d);
+        setProgress(100,'Ready: '+file.name);setTimeout(()=>setProgress(null,'Ready to search.'),900);
+      }catch(e){
+        doc.status='error';doc.error=e.message||String(e);await putDoc(doc);docs=docs.map(d=>d.id===doc.id?doc:d);
+        setProgress(null,'Could not read '+file.name+': '+doc.error);
+      }
+      renderFilters();renderFileList();runSearch();
+    }
+
+    async function handleFiles(list){
+      const files=[...list]; if(!files.length)return;
+      for(const f of files)await processFile(f);
+      $('fileInput').value='';
+    }
+
+    async function preview(doc,pageNum,q){
+      $('previewTitle').textContent=doc.name+' · page '+pageNum; const body=$('previewBody');body.innerHTML='Loading…';$('previewModal').classList.add('open');
+      try{
+        const name=doc.name.toLowerCase();
+        if((doc.type==='application/pdf'||name.endsWith('.pdf'))&&doc.blob){
+          const pdf=await pdfjsLib.getDocument({data:await doc.blob.arrayBuffer()}).promise;const page=await pdf.getPage(pageNum);
+          const vp=page.getViewport({scale:1.6});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const ctx=c.getContext('2d');await page.render({canvasContext:ctx,viewport:vp}).promise;
+          body.innerHTML='';body.appendChild(c);
+          const p=(doc.pages||[]).find(x=>x.page===pageNum);if(p){const s=document.createElement('div');s.className='previewText';s.style.marginTop='12px';appendHighlighted(s,snippetAround(p.text,q||''),q||'');body.appendChild(s)}
+        }else{
+          const p=(doc.pages||[]).find(x=>x.page===pageNum)||doc.pages[0];body.innerHTML='';const t=document.createElement('div');t.className='previewText';appendHighlighted(t,p?p.text:'No preview available.',q||'');body.appendChild(t);
+        }
+      }catch(e){body.textContent='Preview failed: '+(e.message||e)}
+    }
+
+    function renderFileList(){
+      const el=$('fileList');el.innerHTML='';
+      if(!docs.length){el.innerHTML='<div class="empty">No saved files yet.</div>';return}
+      docs.forEach(d=>{
+        const row=document.createElement('div');row.className='fileRow';
+        const info=document.createElement('div');info.className='fileInfo';
+        const n=document.createElement('div');n.className='fileName';n.textContent=d.name;
+        const m=document.createElement('div');m.className='meta';m.textContent=fmtBytes(d.size)+' · '+(d.pageCount||totalPages(d))+' page'+((d.pageCount||totalPages(d))===1?'':'s')+' · '+(d.status==='ready'?'searchable':d.status);
+        info.append(n,m);
+        const ren=document.createElement('button');ren.className='smallBtn';ren.textContent='Rename';ren.onclick=async()=>{
+          const v=prompt('New file name',d.name);if(v&&v.trim()){d.name=v.trim();await putDoc(d);renderFileList();renderFilters();runSearch()}
+        };
+        const del=document.createElement('button');del.className='smallBtn danger';del.textContent='Delete';del.onclick=async()=>{
+          if(confirm('Delete '+d.name+' from File Finder?')){await deleteDoc(d.id);docs=docs.filter(x=>x.id!==d.id);if(selected===d.id)selected='all';renderFileList();renderFilters();runSearch()}
+        };
+        row.append(info,ren,del);el.appendChild(row);
+      });
+    }
+
+    $('uploadBtn').onclick=$('bottomUploadBtn').onclick=()=>$('fileInput').click();
+    $('fileInput').onchange=e=>handleFiles(e.target.files);
+    $('searchInput').oninput=runSearch;
+    $('clearSearch').onclick=()=>{$('searchInput').value='';runSearch();$('searchInput').focus()};
+    $('myFilesBtn').onclick=()=>{renderFileList();$('filesModal').classList.add('open')};
+    document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
+    document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+    window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e});
+    $('installBtn').onclick=async()=>{
+      if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null}
+      else $('installModal').classList.add('open');
+    };
+
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+    (async()=>{
+      db=await openDB();docs=(await getAllDocs()).sort((a,b)=>b.createdAt-a.createdAt);renderFilters();renderFileList();
+      statusEl.textContent=docs.length?docs.length+' saved file'+(docs.length===1?'':'s')+' ready to search.':'Files stay on this device.';
+      if(docs.length) resultsEl.innerHTML='<div class="empty">Type a word or phrase above to search '+docs.length+' saved file'+(docs.length===1?'':'s')+'.</div>';
+    })();
+  </script>
+</body>
+</html>
