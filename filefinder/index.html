@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Highlights the word but keeps the surrounding rows visible.</div>
+        <div class="sub">Shows the entire page with the matching word highlighted.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -519,20 +519,18 @@
 
           const holder=document.createElement('div');
           holder.style.position='relative';
-          holder.style.overflow='auto';
-          holder.style.maxHeight='80vh';
+          holder.style.display='flex';
+          holder.style.alignItems='center';
+          holder.style.justifyContent='center';
+          holder.style.overflow='hidden';
+          holder.style.height='78vh';
           holder.style.borderRadius='10px';
+          c.style.maxWidth='100%';
+          c.style.maxHeight='78vh';
+          c.style.width='auto';
+          c.style.height='auto';
           holder.appendChild(c);
           body.appendChild(holder);
-
-          if(hi.first){
-            requestAnimationFrame(()=>{
-              const scaleY=c.getBoundingClientRect().height/c.height;
-              const visibleH=holder.clientHeight||window.innerHeight*0.8;
-              const target=Math.max(0,(hi.first.y*scaleY)-(visibleH*0.35));
-              holder.scrollTop=target;
-            });
-          }
         }else if(doc.type.startsWith('image/')){
           const source=await freshSourceBlob(doc);
           const img=await createImageBitmap(source);
@@ -558,19 +556,18 @@
 
           const holder=document.createElement('div');
           holder.style.position='relative';
-          holder.style.overflow='auto';
-          holder.style.maxHeight='80vh';
+          holder.style.display='flex';
+          holder.style.alignItems='center';
+          holder.style.justifyContent='center';
+          holder.style.overflow='hidden';
+          holder.style.height='78vh';
           holder.style.borderRadius='10px';
+          c.style.maxWidth='100%';
+          c.style.maxHeight='78vh';
+          c.style.width='auto';
+          c.style.height='auto';
           holder.appendChild(c);
           body.appendChild(holder);
-
-          if(hi.first){
-            requestAnimationFrame(()=>{
-              const scaleY=c.getBoundingClientRect().height/c.height;
-              const visibleH=holder.clientHeight||window.innerHeight*0.8;
-              holder.scrollTop=Math.max(0,(hi.first.y*scaleY)-(visibleH*0.35));
-            });
-          }
         }else{
           body.innerHTML='';
           const t=document.createElement('div');
