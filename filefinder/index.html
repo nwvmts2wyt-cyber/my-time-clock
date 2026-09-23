@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Upload it once. Search the material area.</div>
+        <div class="sub">Search the Material Description words.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -102,7 +102,7 @@
       <div class="count" id="resultCount"></div>
     </div>
     <div class="results" id="results">
-      <div class="empty">Upload a sheet or picture. I’ll scan the material section and ignore the top job-site header.</div>
+      <div class="empty">Upload a sheet or picture. I scan the material table and Material Description column.</div>
     </div>
   </div>
 
@@ -212,13 +212,34 @@
         for(const p of (doc.pages||[])){
           const text=p.text||''; const low=text.toLowerCase(), needle=q.toLowerCase(); let found=0;
           if(needle.length<=2){
-            // Short searches such as "V" should match a standalone material/code,
-            // not random letters inside longer words.
             const tokens=low.match(/[a-z0-9#._/-]+/g)||[];
             found=tokens.filter(t=>t===needle).length;
           }else{
             let from=0;
             while(true){const i=low.indexOf(needle,from);if(i<0)break;found++;from=i+Math.max(1,needle.length);if(found>=20)break}
+
+            // OCR can confuse one character (for example I/1 or B/8).
+            // If there was no exact hit, allow one mismatch in the beginning of a word.
+            if(!found){
+              const tokens=low.match(/[a-z0-9]+/g)||[];
+              const dist1=(a,b)=>{
+                if(Math.abs(a.length-b.length)>1)return 2;
+                let i=0,j=0,d=0;
+                while(i<a.length&&j<b.length){
+                  if(a[i]===b[j]){i++;j++;continue}
+                  if(++d>1)return d;
+                  if(a.length>b.length)i++;
+                  else if(b.length>a.length)j++;
+                  else{i++;j++}
+                }
+                if(i<a.length||j<b.length)d++;
+                return d;
+              };
+              for(const t of tokens){
+                const head=t.slice(0,Math.min(t.length,needle.length));
+                if(dist1(head,needle)<=1){found++;if(found>=20)break}
+              }
+            }
           }
           if(found)matches.push({doc,page:p.page,text,count:found});
         }
@@ -243,23 +264,44 @@
       }});
       try{
         await worker.setParameters({
-          preserve_interword_spaces: '1'
+          preserve_interword_spaces: '1',
+          tessedit_pageseg_mode: '6'
         });
       }catch(e){}
       return worker;
     }
 
+    function makeCrop(source,x,y,w,h,contrast=1.7){
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.floor(w));
+      c.height=Math.max(1,Math.floor(h));
+      const ctx=c.getContext('2d',{alpha:false});
+      ctx.fillStyle='#fff';
+      ctx.fillRect(0,0,c.width,c.height);
+      ctx.filter='grayscale(1) contrast('+contrast+')';
+      ctx.drawImage(source,Math.floor(x),Math.floor(y),Math.floor(w),Math.floor(h),0,0,c.width,c.height);
+      ctx.filter='none';
+      return c;
+    }
+
+    function normalizeOCRText(v){
+      return (v||'').replace(/\s+/g,' ').trim();
+    }
+
     async function processPDF(file,doc){
-      const data=await file.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data}).promise; doc.pageCount=pdf.numPages;
+      doc.pages=[];
+      const data=await file.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data}).promise;
+      doc.pageCount=pdf.numPages;
       let ocrWorker=null;
       try{
         ocrWorker=await makeOCRWorker(file.name);
         for(let n=1;n<=pdf.numPages;n++){
-          setProgress(((n-1)/pdf.numPages)*100,'Scanning material area · page '+n+' of '+pdf.numPages);
+          setProgress(((n-1)/pdf.numPages)*100,'Scanning material descriptions · page '+n+' of '+pdf.numPages);
           const page=await pdf.getPage(n);
 
-          // Render the whole page so the document still previews normally.
-          const vp=page.getViewport({scale:3});
+          // High-resolution render for OCR.
+          const vp=page.getViewport({scale:3.4});
           const full=document.createElement('canvas');
           const fullCtx=full.getContext('2d',{alpha:false});
           full.width=Math.floor(vp.width);
@@ -268,45 +310,70 @@
           fullCtx.fillRect(0,0,full.width,full.height);
           await page.render({canvasContext:fullCtx,viewport:vp}).promise;
 
-          // Do NOT index the form/header at the top (job site, dates, etc.).
-          // OCR begins below the top 18% so searches focus on the material table/description area.
-          const topCut=Math.floor(full.height*0.18);
-          const body=document.createElement('canvas');
-          const bodyCtx=body.getContext('2d',{alpha:false});
-          body.width=full.width;
-          body.height=full.height-topCut;
-          bodyCtx.fillStyle='#fff';
-          bodyCtx.fillRect(0,0,body.width,body.height);
-          bodyCtx.drawImage(full,0,topCut,full.width,body.height,0,0,body.width,body.height);
+          // Pass 1: everything below the job-site/header section.
+          // This keeps the count/material rows searchable but ignores the top form text.
+          const bodyTop=Math.floor(full.height*0.24);
+          const body=makeCrop(full,0,bodyTop,full.width,full.height-bodyTop,1.65);
+          const bodyOut=await ocrWorker.recognize(body);
+          const bodyText=normalizeOCRText(bodyOut.data.text);
 
-          const out=await ocrWorker.recognize(body);
-          const text=(out.data.text||'').replace(/\s+/g,' ').trim();
+          // Pass 2: dedicated Material + Material Description table pass.
+          // The extra pass is intentional: table lines/columns can make OCR miss words
+          // such as FIBERTITE, TAPE, PVC, PRIMER, etc. when reading the whole page at once.
+          const tableX=Math.floor(full.width*0.045);
+          const tableY=Math.floor(full.height*0.29);
+          const tableW=Math.floor(full.width*0.82);
+          const tableH=Math.floor(full.height*0.70);
+          const table=makeCrop(full,tableX,tableY,tableW,Math.min(tableH,full.height-tableY),1.9);
+          const tableOut=await ocrWorker.recognize(table);
+          const tableText=normalizeOCRText(tableOut.data.text);
 
+          // Pass 3: zoom specifically into the Material Description column.
+          const descX=Math.floor(full.width*0.245);
+          const descY=Math.floor(full.height*0.30);
+          const descW=Math.floor(full.width*0.57);
+          const descH=Math.floor(full.height*0.67);
+          const desc=makeCrop(full,descX,descY,descW,Math.min(descH,full.height-descY),2.0);
+          const descOut=await ocrWorker.recognize(desc);
+          const descText=normalizeOCRText(descOut.data.text);
+
+          const text=normalizeOCRText(bodyText+' '+tableText+' '+descText);
           doc.pages.push({page:n,text});
+          doc.ocrVersion=4;
           doc.progress=Math.round(n/pdf.numPages*100);
           await putDoc(doc);
           docs=docs.map(d=>d.id===doc.id?doc:d);
           if(activeQuery)runSearch();
         }
-      } finally { if(ocrWorker)await ocrWorker.terminate(); }
+      } finally {
+        if(ocrWorker) await ocrWorker.terminate();
+      }
     }
 
     async function processImage(file,doc){
+      doc.pages=[];
       const worker=await makeOCRWorker(file.name);
       try{
-        setProgress(10,'Scanning material area in picture: '+file.name);
+        setProgress(10,'Scanning words in the material area: '+file.name);
         const img=await createImageBitmap(file);
-        const topCut=Math.floor(img.height*0.18);
-        const canvas=document.createElement('canvas');
-        canvas.width=img.width;
-        canvas.height=img.height-topCut;
-        const ctx=canvas.getContext('2d',{alpha:false});
-        ctx.fillStyle='#fff';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.drawImage(img,0,topCut,img.width,img.height-topCut,0,0,canvas.width,canvas.height);
-        const out=await worker.recognize(canvas);
-        doc.pages=[{page:1,text:(out.data.text||'').replace(/\s+/g,' ').trim()}];
+
+        // Whole page below the top header.
+        const bodyTop=Math.floor(img.height*0.20);
+        const body=makeCrop(img,0,bodyTop,img.width,img.height-bodyTop,1.7);
+        const bodyOut=await worker.recognize(body);
+
+        // Extra center/table pass for photographed inventory sheets.
+        const tableX=Math.floor(img.width*0.05);
+        const tableY=Math.floor(img.height*0.28);
+        const tableW=Math.floor(img.width*0.85);
+        const tableH=Math.floor(img.height*0.70);
+        const table=makeCrop(img,tableX,tableY,tableW,Math.min(tableH,img.height-tableY),1.9);
+        const tableOut=await worker.recognize(table);
+
+        const text=normalizeOCRText((bodyOut.data.text||'')+' '+(tableOut.data.text||''));
+        doc.pages=[{page:1,text}];
         doc.pageCount=1;
+        doc.ocrVersion=4;
         await putDoc(doc);
       } finally { await worker.terminate(); }
     }
@@ -375,7 +442,25 @@
         const del=document.createElement('button');del.className='smallBtn danger';del.textContent='Delete';del.onclick=async()=>{
           if(confirm('Delete '+d.name+' from File Finder?')){await deleteDoc(d.id);docs=docs.filter(x=>x.id!==d.id);if(selected===d.id)selected='all';renderFileList();renderFilters();runSearch()}
         };
-        row.append(info,ren,del);el.appendChild(row);
+        const rescan=document.createElement('button');rescan.className='smallBtn';rescan.textContent='Rescan';rescan.onclick=async()=>{
+          if(!d.blob){alert('This saved file cannot be rescanned. Delete it and upload it again.');return}
+          $('filesModal').classList.remove('open');
+          d.status='processing';d.pages=[];await putDoc(d);docs=docs.map(x=>x.id===d.id?d:x);runSearch();
+          try{
+            const name=d.name.toLowerCase();
+            if(d.type==='application/pdf'||name.endsWith('.pdf')) await processPDF(d.blob,d);
+            else if(d.type.startsWith('image/')) await processImage(d.blob,d);
+            else if(name.endsWith('.docx')) await processDOCX(d.blob,d);
+            else await processText(d.blob,d);
+            d.status='ready';d.progress=100;d.ocrVersion=4;await putDoc(d);
+            docs=docs.map(x=>x.id===d.id?d:x);
+            setProgress(null,'Rescan complete. Search again.');
+          }catch(e){
+            d.status='error';d.error=e.message||String(e);await putDoc(d);setProgress(null,'Rescan failed: '+d.error);
+          }
+          renderFileList();renderFilters();runSearch();
+        };
+        row.append(info,rescan,ren,del);el.appendChild(row);
       });
     }
 
