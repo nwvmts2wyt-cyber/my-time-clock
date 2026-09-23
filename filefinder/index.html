@@ -288,6 +288,55 @@
       return (v||'').replace(/\s+/g,' ').trim();
     }
 
+    function wordsFromOCR(data,offsetX=0,offsetY=0){
+      const out=[];
+      const pushWord=w=>{
+        if(!w||!w.text||!w.bbox)return;
+        out.push({
+          text:String(w.text),
+          x0:Number(w.bbox.x0||0)+offsetX,
+          y0:Number(w.bbox.y0||0)+offsetY,
+          x1:Number(w.bbox.x1||0)+offsetX,
+          y1:Number(w.bbox.y1||0)+offsetY
+        });
+      };
+      if(Array.isArray(data.words)) data.words.forEach(pushWord);
+      if(Array.isArray(data.blocks)){
+        data.blocks.forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(pushWord))));
+      }
+      return out;
+    }
+
+    function wordMatchesQuery(word,q){
+      const w=String(word||'').toLowerCase().replace(/[^a-z0-9#._/-]/g,'');
+      const n=String(q||'').toLowerCase().trim().replace(/[^a-z0-9#._/-]/g,'');
+      if(!w||!n)return false;
+      if(n.length<=2)return w===n;
+      return w.includes(n) || w.startsWith(n);
+    }
+
+    function drawHighlights(canvas,pageData,q){
+      const boxes=(pageData&&pageData.boxes)||[];
+      if(!boxes.length||!q)return 0;
+      const ctx=canvas.getContext('2d');
+      const sx=canvas.width/(pageData.sourceWidth||canvas.width);
+      const sy=canvas.height/(pageData.sourceHeight||canvas.height);
+      let hits=0;
+      ctx.save();
+      ctx.fillStyle='rgba(255,230,70,.48)';
+      ctx.strokeStyle='rgba(255,170,0,.98)';
+      ctx.lineWidth=Math.max(2,canvas.width/450);
+      boxes.forEach(b=>{
+        if(!wordMatchesQuery(b.text,q))return;
+        const x=b.x0*sx,y=b.y0*sy,w=(b.x1-b.x0)*sx,h=(b.y1-b.y0)*sy;
+        ctx.fillRect(x-2,y-2,w+4,h+4);
+        ctx.strokeRect(x-2,y-2,w+4,h+4);
+        hits++;
+      });
+      ctx.restore();
+      return hits;
+    }
+
     async function processPDF(file,doc){
       doc.pages=[];
       const data=await file.arrayBuffer();
@@ -314,8 +363,10 @@
           // This keeps the count/material rows searchable but ignores the top form text.
           const bodyTop=Math.floor(full.height*0.24);
           const body=makeCrop(full,0,bodyTop,full.width,full.height-bodyTop,1.65);
-          const bodyOut=await ocrWorker.recognize(body);
+          const bodyOut=await ocrWorker.recognize(body,{}, {blocks:true});
           const bodyText=normalizeOCRText(bodyOut.data.text);
+          const boxes=[];
+          boxes.push(...wordsFromOCR(bodyOut.data,0,bodyTop));
 
           // Pass 2: dedicated Material + Material Description table pass.
           // The extra pass is intentional: table lines/columns can make OCR miss words
@@ -325,8 +376,9 @@
           const tableW=Math.floor(full.width*0.82);
           const tableH=Math.floor(full.height*0.70);
           const table=makeCrop(full,tableX,tableY,tableW,Math.min(tableH,full.height-tableY),1.9);
-          const tableOut=await ocrWorker.recognize(table);
+          const tableOut=await ocrWorker.recognize(table,{}, {blocks:true});
           const tableText=normalizeOCRText(tableOut.data.text);
+          boxes.push(...wordsFromOCR(tableOut.data,tableX,tableY));
 
           // Pass 3: zoom specifically into the Material Description column.
           const descX=Math.floor(full.width*0.245);
@@ -334,12 +386,13 @@
           const descW=Math.floor(full.width*0.57);
           const descH=Math.floor(full.height*0.67);
           const desc=makeCrop(full,descX,descY,descW,Math.min(descH,full.height-descY),2.0);
-          const descOut=await ocrWorker.recognize(desc);
+          const descOut=await ocrWorker.recognize(desc,{}, {blocks:true});
           const descText=normalizeOCRText(descOut.data.text);
+          boxes.push(...wordsFromOCR(descOut.data,descX,descY));
 
           const text=normalizeOCRText(bodyText+' '+tableText+' '+descText);
-          doc.pages.push({page:n,text});
-          doc.ocrVersion=4;
+          doc.pages.push({page:n,text,boxes,sourceWidth:full.width,sourceHeight:full.height});
+          doc.ocrVersion=5;
           doc.progress=Math.round(n/pdf.numPages*100);
           await putDoc(doc);
           docs=docs.map(d=>d.id===doc.id?doc:d);
@@ -360,7 +413,9 @@
         // Whole page below the top header.
         const bodyTop=Math.floor(img.height*0.20);
         const body=makeCrop(img,0,bodyTop,img.width,img.height-bodyTop,1.7);
-        const bodyOut=await worker.recognize(body);
+        const bodyOut=await worker.recognize(body,{}, {blocks:true});
+        const boxes=[];
+        boxes.push(...wordsFromOCR(bodyOut.data,0,bodyTop));
 
         // Extra center/table pass for photographed inventory sheets.
         const tableX=Math.floor(img.width*0.05);
@@ -368,12 +423,13 @@
         const tableW=Math.floor(img.width*0.85);
         const tableH=Math.floor(img.height*0.70);
         const table=makeCrop(img,tableX,tableY,tableW,Math.min(tableH,img.height-tableY),1.9);
-        const tableOut=await worker.recognize(table);
+        const tableOut=await worker.recognize(table,{}, {blocks:true});
+        boxes.push(...wordsFromOCR(tableOut.data,tableX,tableY));
 
         const text=normalizeOCRText((bodyOut.data.text||'')+' '+(tableOut.data.text||''));
-        doc.pages=[{page:1,text}];
+        doc.pages=[{page:1,text,boxes,sourceWidth:img.width,sourceHeight:img.height}];
         doc.pageCount=1;
-        doc.ocrVersion=4;
+        doc.ocrVersion=5;
         await putDoc(doc);
       } finally { await worker.terminate(); }
     }
@@ -413,16 +469,56 @@
     }
 
     async function preview(doc,pageNum,q){
-      $('previewTitle').textContent=doc.name+' · page '+pageNum; const body=$('previewBody');body.innerHTML='Loading…';$('previewModal').classList.add('open');
+      $('previewTitle').textContent=doc.name+' · page '+pageNum;
+      const body=$('previewBody');
+      body.innerHTML='Loading highlighted page…';
+      $('previewModal').classList.add('open');
       try{
         const name=doc.name.toLowerCase();
+        const pageData=(doc.pages||[]).find(x=>x.page===pageNum)||doc.pages[0];
+
         if((doc.type==='application/pdf'||name.endsWith('.pdf'))&&doc.blob){
-          const pdf=await pdfjsLib.getDocument({data:await doc.blob.arrayBuffer()}).promise;const page=await pdf.getPage(pageNum);
-          const vp=page.getViewport({scale:1.6});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;const ctx=c.getContext('2d');await page.render({canvasContext:ctx,viewport:vp}).promise;
-          body.innerHTML='';body.appendChild(c);
-          const p=(doc.pages||[]).find(x=>x.page===pageNum);if(p){const s=document.createElement('div');s.className='previewText';s.style.marginTop='12px';appendHighlighted(s,snippetAround(p.text,q||''),q||'');body.appendChild(s)}
+          const pdf=await pdfjsLib.getDocument({data:await doc.blob.arrayBuffer()}).promise;
+          const page=await pdf.getPage(pageNum);
+          const vp=page.getViewport({scale:1.8});
+          const c=document.createElement('canvas');
+          c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+          const ctx=c.getContext('2d');
+          await page.render({canvasContext:ctx,viewport:vp}).promise;
+          const hits=drawHighlights(c,pageData,q);
+          body.innerHTML='';
+          const badge=document.createElement('div');
+          badge.className='previewText';
+          badge.style.marginBottom='10px';
+          badge.textContent=hits?('Highlighted '+hits+' match'+(hits===1?'':'es')+' for “'+q+'”'):'Text match found, but this file needs a Rescan to highlight it on the page.';
+          body.appendChild(badge);
+          body.appendChild(c);
+          if(pageData){
+            const t=document.createElement('div');
+            t.className='previewText';
+            t.style.marginTop='12px';
+            appendHighlighted(t,snippetAround(pageData.text,q||''),q||'');
+            body.appendChild(t);
+          }
+        }else if(doc.type.startsWith('image/')&&doc.blob){
+          const img=await createImageBitmap(doc.blob);
+          const maxW=1100;
+          const scale=Math.min(1,maxW/img.width);
+          const c=document.createElement('canvas');
+          c.width=Math.floor(img.width*scale);c.height=Math.floor(img.height*scale);
+          const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
+          const hits=drawHighlights(c,pageData,q);
+          body.innerHTML='';
+          const badge=document.createElement('div');
+          badge.className='previewText';
+          badge.style.marginBottom='10px';
+          badge.textContent=hits?('Highlighted '+hits+' match'+(hits===1?'':'es')+' for “'+q+'”'):'Text match found, but this file needs a Rescan to highlight it on the picture.';
+          body.appendChild(badge);body.appendChild(c);
         }else{
-          const p=(doc.pages||[]).find(x=>x.page===pageNum)||doc.pages[0];body.innerHTML='';const t=document.createElement('div');t.className='previewText';appendHighlighted(t,p?p.text:'No preview available.',q||'');body.appendChild(t);
+          body.innerHTML='';
+          const t=document.createElement('div');t.className='previewText';
+          appendHighlighted(t,pageData?pageData.text:'No preview available.',q||'');
+          body.appendChild(t);
         }
       }catch(e){body.textContent='Preview failed: '+(e.message||e)}
     }
@@ -452,7 +548,7 @@
             else if(d.type.startsWith('image/')) await processImage(d.blob,d);
             else if(name.endsWith('.docx')) await processDOCX(d.blob,d);
             else await processText(d.blob,d);
-            d.status='ready';d.progress=100;d.ocrVersion=4;await putDoc(d);
+            d.status='ready';d.progress=100;d.ocrVersion=5;await putDoc(d);
             docs=docs.map(x=>x.id===d.id?d:x);
             setProgress(null,'Rescan complete. Search again.');
           }catch(e){
