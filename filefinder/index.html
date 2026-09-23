@@ -239,30 +239,15 @@
             const tokens=low.match(/[a-z0-9#._/-]+/g)||[];
             found=tokens.filter(t=>t===needle).length;
           }else{
+            // Exact text matching only. Do not "guess" nearby words:
+            // if the user searches TPO, TERM must never count as a hit.
             let from=0;
-            while(true){const i=low.indexOf(needle,from);if(i<0)break;found++;from=i+Math.max(1,needle.length);if(found>=20)break}
-
-            // OCR can confuse one character (for example I/1 or B/8).
-            // If there was no exact hit, allow one mismatch in the beginning of a word.
-            if(!found){
-              const tokens=low.match(/[a-z0-9]+/g)||[];
-              const dist1=(a,b)=>{
-                if(Math.abs(a.length-b.length)>1)return 2;
-                let i=0,j=0,d=0;
-                while(i<a.length&&j<b.length){
-                  if(a[i]===b[j]){i++;j++;continue}
-                  if(++d>1)return d;
-                  if(a.length>b.length)i++;
-                  else if(b.length>a.length)j++;
-                  else{i++;j++}
-                }
-                if(i<a.length||j<b.length)d++;
-                return d;
-              };
-              for(const t of tokens){
-                const head=t.slice(0,Math.min(t.length,needle.length));
-                if(dist1(head,needle)<=1){found++;if(found>=20)break}
-              }
+            while(true){
+              const i=low.indexOf(needle,from);
+              if(i<0)break;
+              found++;
+              from=i+Math.max(1,needle.length);
+              if(found>=20)break;
             }
           }
           if(found)matches.push({doc,page:p.page,text,count:found});
@@ -336,25 +321,9 @@
       const n=String(q||'').toLowerCase().trim().replace(/[^a-z0-9#._/-]/g,'');
       if(!w||!n)return false;
       if(n.length<=2)return w===n;
-      if(w.includes(n)||w.startsWith(n))return true;
-
-      // Match the same one-character OCR mistakes allowed by search,
-      // so the yellow mark lands on the word that caused the page result.
-      const dist1=(a,b)=>{
-        if(Math.abs(a.length-b.length)>1)return 2;
-        let i=0,j=0,d=0;
-        while(i<a.length&&j<b.length){
-          if(a[i]===b[j]){i++;j++;continue}
-          if(++d>1)return d;
-          if(a.length>b.length)i++;
-          else if(b.length>a.length)j++;
-          else{i++;j++}
-        }
-        if(i<a.length||j<b.length)d++;
-        return d;
-      };
-      const head=w.slice(0,Math.min(w.length,n.length));
-      return dist1(head,n)<=1;
+      // Highlight only text that actually contains what was typed.
+      // No fuzzy OCR guessing here — it caused TPO to highlight TERM.
+      return w.includes(n);
     }
 
     function drawHighlights(canvas,pageData,q){
@@ -367,7 +336,7 @@
       ctx.save();
       // Keep the word readable: light transparent yellow with a strong outline.
       // The previous 70% fill hid dark letters on scanned pages.
-      ctx.fillStyle='rgba(255,235,59,.24)';
+      ctx.fillStyle='rgba(255,235,59,.14)';
       ctx.strokeStyle='rgba(255,193,7,.95)';
       ctx.lineWidth=Math.max(3,canvas.width/420);
       boxes.forEach(b=>{
