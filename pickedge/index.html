@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PickEdge">
+<title>PickEdge</title>
+<style>
+:root{--bg:#08101d;--panel:#101a2b;--panel2:#162238;--text:#f6f8fc;--muted:#9aa7bb;--line:#25344e;--accent:#7cf0c1;--warn:#ffd166;--bad:#ff7b8d;--blue:#7ab8ff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#08101d,#0d1424 40%,#0b1020);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+button,input,select,textarea{font:inherit}button{cursor:pointer}.app{max-width:760px;margin:0 auto;padding:18px 14px 96px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}.brand small{color:var(--accent);font-weight:800;letter-spacing:.12em}.brand h1{margin:3px 0 0;font-size:30px;line-height:1.05}.muted{color:var(--muted)}.tiny{font-size:12px}.pill{border:1px solid var(--line);background:#0f1a2b;color:var(--muted);border-radius:999px;padding:8px 10px;font-size:12px}
+.notice{background:#111b2d;border:1px solid var(--line);border-radius:14px;padding:11px 12px;color:var(--muted);font-size:13px;margin-bottom:14px}
+.toolbar{display:grid;grid-template-columns:1fr auto;gap:10px;margin-bottom:12px}.search,.field{width:100%;border:1px solid var(--line);background:#0d1728;color:var(--text);border-radius:13px;padding:13px 14px;min-height:46px}.chips{display:flex;gap:8px;overflow:auto;padding-bottom:6px;margin-bottom:12px}.chip{flex:0 0 auto;border:1px solid var(--line);background:#10192a;color:var(--muted);border-radius:999px;padding:9px 12px}.chip.active{background:var(--accent);color:#07110d;border-color:var(--accent);font-weight:800}
+.card{background:rgba(16,26,43,.94);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}.card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.player{font-size:19px;font-weight:850;overflow-wrap:anywhere}.sub{font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}.score{min-width:58px;text-align:center;border-radius:14px;padding:8px 9px;background:#0a1422;border:1px solid var(--line)}.score b{font-size:21px;display:block}.score span{font-size:10px;color:var(--muted)}.strong b{color:var(--accent)}.look b{color:var(--blue)}.mixed b{color:var(--warn)}.weak b{color:var(--bad)}
+.linebox{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}.tag{border-radius:10px;padding:7px 9px;background:#0b1524;border:1px solid var(--line);font-size:13px}.more{color:var(--accent)}.less{color:var(--blue)}.demo{color:var(--warn)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.stat{background:#0c1626;border:1px solid #1f2e46;border-radius:12px;padding:9px}.stat .v{font-weight:800;font-size:16px}.stat .k{font-size:10px;color:var(--muted);margin-top:2px}.explain{font-size:13px;color:#c5cfdf;line-height:1.45;margin-top:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.btn{border:0;border-radius:12px;padding:11px 13px;min-height:44px;background:#22314a;color:white;font-weight:750}.btn.primary{background:var(--accent);color:#07110d}.btn.ghost{background:#0c1626;border:1px solid var(--line)}.btn.danger{background:#3a1720;color:#ffd6dc;border:1px solid #6e2837}.btn:disabled{opacity:.45}
+.section-title{font-size:20px;font-weight:850;margin:4px 0 12px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.label{font-size:12px;color:var(--muted);margin:0 0 6px 2px}.group{margin-bottom:11px}.textarea{min-height:88px;resize:vertical}.rangeRow{display:grid;grid-template-columns:1fr 52px;gap:10px;align-items:center}.rangeRow input[type=range]{width:100%}
+.breakdown{margin-top:12px}.barrow{display:grid;grid-template-columns:104px 1fr 42px;gap:8px;align-items:center;margin:8px 0;font-size:12px}.track{height:8px;background:#0a1321;border-radius:999px;overflow:hidden}.fill{height:100%;background:var(--accent);border-radius:999px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:12px 0}.summary .stat{padding:12px}.history-result{display:flex;gap:7px;flex-wrap:wrap}.win{color:var(--accent)}.loss{color:var(--bad)}.push{color:var(--warn)}
+.empty{padding:24px 8px;text-align:center;color:var(--muted)}.nav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(760px,100%);display:grid;grid-template-columns:repeat(5,1fr);background:rgba(7,12,22,.96);border-top:1px solid var(--line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:5}.nav button{background:none;border:0;color:var(--muted);padding:7px 2px;font-size:11px;min-height:52px}.nav button b{display:block;font-size:20px;margin-bottom:2px}.nav button.active{color:var(--accent)}.screen{display:none}.screen.active{display:block}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#142239;border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:13px;display:none;z-index:10;max-width:90%}
+@media(max-width:430px){.app{padding-left:11px;padding-right:11px}.grid2,.grid3{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat{min-width:0}.stat .v{font-size:14px}.toolbar{grid-template-columns:1fr}.brand h1{font-size:27px}.barrow{grid-template-columns:90px 1fr 38px}.summary{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="best" class="screen active">
+    <div class="top"><div class="brand"><small>PICKEDGE</small><h1>Best Edges</h1><div class="muted tiny">Manual research board</div></div><div class="pill" id="pickCount">0 picks</div></div>
+    <div class="notice">Research score is not a win probability. Sports outcomes are uncertain. This version does not pull live PrizePicks data.</div>
+    <div class="toolbar"><input id="search" class="search" placeholder="Search player"><button class="btn ghost" id="sortBtn">Highest score</button></div>
+    <div class="chips" id="sportChips"></div>
+    <div id="pickList"></div>
+  </div>
+
+  <div id="analyze" class="screen">
+    <div class="top"><div class="brand"><small>ANALYZE</small><h1>Add a Pick</h1></div></div>
+    <div class="card">
+      <div class="section-title">Paste board text</div>
+      <div class="muted tiny" style="margin-bottom:8px">Format: Player | Stat | Line | More/Less | Projection</div>
+      <textarea id="pasteText" class="field textarea" placeholder="Example: Jalen Hurts | Pass Yards | 244.5 | More | 262"></textarea>
+      <div class="actions"><button class="btn" id="parseBtn">Parse rows</button></div>
+    </div>
+    <form id="pickForm" class="card">
+      <div class="grid2">
+        <div class="group"><div class="label">Sport</div><select id="sport" class="field"><option>NBA</option><option>NFL</option><option>MLB</option><option>NHL</option><option>CFB</option><option>CBB</option><option>Soccer</option></select></div>
+        <div class="group"><div class="label">Player</div><input id="player" class="field" required></div>
+        <div class="group"><div class="label">Opponent</div><input id="opponent" class="field" placeholder="Optional"></div>
+        <div class="group"><div class="label">Stat</div><input id="statType" class="field" required placeholder="Points, Pass Yards..."></div>
+        <div class="group"><div class="label">PrizePicks line</div><input id="line" class="field" type="number" step="0.1" required></div>
+        <div class="group"><div class="label">Pick</div><select id="direction" class="field"><option value="More">More</option><option value="Less">Less</option></select></div>
+        <div class="group"><div class="label">Projection</div><input id="projection" class="field" type="number" step="0.1" required></div>
+        <div class="group"><div class="label">Last 5 average</div><input id="avg5" class="field" type="number" step="0.1" value="0"></div>
+        <div class="group"><div class="label">Last 10 average</div><input id="avg10" class="field" type="number" step="0.1" value="0"></div>
+        <div class="group"><div class="label">Season average</div><input id="avgSeason" class="field" type="number" step="0.1" value="0"></div>
+        <div class="group"><div class="label">Last 5 hit %</div><input id="hit5" class="field" type="number" min="0" max="100" value="50"></div>
+        <div class="group"><div class="label">Last 10 hit %</div><input id="hit10" class="field" type="number" min="0" max="100" value="50"></div>
+        <div class="group"><div class="label">Season hit %</div><input id="hitSeason" class="field" type="number" min="0" max="100" value="50"></div>
+      </div>
+      <div class="group"><div class="label">Minutes / usage trend (1-5)</div><div class="rangeRow"><input id="usage" type="range" min="1" max="5" value="3"><div class="pill" id="usageVal">3/5</div></div></div>
+      <div class="group"><div class="label">Matchup favorability (1-5)</div><div class="rangeRow"><input id="matchup" type="range" min="1" max="5" value="3"><div class="pill" id="matchupVal">3/5</div></div></div>
+      <div class="group"><div class="label">Role / injury confidence (1-5)</div><div class="rangeRow"><input id="role" type="range" min="1" max="5" value="3"><div class="pill" id="roleVal">3/5</div></div></div>
+      <div class="group"><div class="label">Notes</div><textarea id="notes" class="field textarea" placeholder="Optional context"></textarea></div>
+      <div id="previewScore"></div>
+      <div class="actions"><button class="btn primary" type="submit">Save pick</button><button class="btn ghost" type="button" id="resetForm">Reset</button></div>
+    </form>
+  </div>
+
+  <div id="slip" class="screen">
+    <div class="top"><div class="brand"><small>SLIP BUILDER</small><h1>Your Slip</h1></div></div>
+    <div id="slipSummary"></div>
+    <div id="slipList"></div>
+  </div>
+
+  <div id="history" class="screen">
+    <div class="top"><div class="brand"><small>RESULTS</small><h1>History</h1></div></div>
+    <div id="historySummary"></div>
+    <div id="historyList"></div>
+  </div>
+
+  <div id="settings" class="screen">
+    <div class="top"><div class="brand"><small>SETTINGS</small><h1>Controls</h1></div></div>
+    <div class="card">
+      <div class="group"><div class="label">Optional daily spending limit</div><input id="dailyLimit" type="number" min="0" step="1" class="field" placeholder="0 = not set"></div>
+      <label class="card" style="display:flex;align-items:center;gap:10px;padding:12px;margin:8px 0"><input id="hideLow" type="checkbox" style="width:22px;height:22px"><span>Hide picks scored under 50 on Best Edges</span></label>
+      <div class="notice" style="margin-top:12px">Set limits you are comfortable with. Do not chase losses or treat research scores as guarantees.</div>
+      <div class="actions"><button class="btn primary" id="saveSettings">Save settings</button><button class="btn danger" id="clearDemo">Clear demo data</button></div>
+    </div>
+    <div class="card">
+      <div class="section-title">How scoring works</div>
+      <div class="explain">Projection edge 30% • Last 10 hit rate 18% • Season hit rate 14% • Last 5 hit rate 10% • Consistency 8% • Matchup 8% • Role/injury confidence 7% • Usage trend 5%.</div>
+      <div class="explain">80-100: Strong statistical edge • 65-79: Worth a closer look • 50-64: Mixed • under 50: Weak. These labels are research categories, not probabilities.</div>
+    </div>
+  </div>
+</div>
+<nav class="nav">
+  <button data-tab="best" class="active"><b>★</b>Best</button>
+  <button data-tab="analyze"><b>＋</b>Analyze</button>
+  <button data-tab="slip"><b>☰</b>Slip</button>
+  <button data-tab="history"><b>✓</b>History</button>
+  <button data-tab="settings"><b>⚙</b>Settings</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+var KEY="pickedge-v1";
+var sports=["All","NBA","NFL","MLB","NHL","CFB","CBB","Soccer"];
+var activeSport="All", sortDesc=true;
+var demo=[
+{id:"d1",demo:true,sport:"NBA",player:"Demo Guard",opponent:"BOS",statType:"Points",line:24.5,direction:"More",projection:27.8,avg5:28.1,avg10:26.9,avgSeason:25.8,hit5:80,hit10:70,hitSeason:64,usage:4,matchup:4,role:5,notes:"Demo data only",slip:false,result:""},
+{id:"d2",demo:true,sport:"NFL",player:"Demo QB",opponent:"DAL",statType:"Pass Yards",line:244.5,direction:"More",projection:258,avg5:261,avg10:254,avgSeason:248,hit5:60,hit10:70,hitSeason:61,usage:5,matchup:3,role:5,notes:"Demo data only",slip:false,result:""},
+{id:"d3",demo:true,sport:"MLB",player:"Demo Pitcher",opponent:"ATL",statType:"Strikeouts",line:6.5,direction:"Less",projection:5.6,avg5:5.4,avg10:5.9,avgSeason:6.1,hit5:80,hit10:70,hitSeason:60,usage:3,matchup:4,role:4,notes:"Demo data only",slip:false,result:""}
+];
+function load(){try{var v=JSON.parse(localStorage.getItem(KEY));if(v&&v.picks)return v;}catch(e){}return {picks:demo.slice(),settings:{dailyLimit:"",hideLow:false}}}
+var state=load();
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function clamp(n,a,b){n=Number(n);if(!isFinite(n))return a;return Math.max(a,Math.min(b,n))}
+function calc(p){
+ var line=Math.abs(Number(p.line))||1;
+ var signed=p.direction==="More"?(Number(p.projection)-Number(p.line)):(Number(p.line)-Number(p.projection));
+ var edgePct=clamp((signed/line)*100,-25,25);
+ var edgeScore=clamp(50+edgePct*2,0,100);
+ var h5=clamp(p.hit5,0,100),h10=clamp(p.hit10,0,100),hs=clamp(p.hitSeason,0,100);
+ var mean=(h5+h10+hs)/3;
+ var variance=((h5-mean)*(h5-mean)+(h10-mean)*(h10-mean)+(hs-mean)*(hs-mean))/3;
+ var consistency=clamp(100-Math.sqrt(variance)*2,0,100);
+ var usage=clamp(p.usage,1,5)*20, matchup=clamp(p.matchup,1,5)*20, role=clamp(p.role,1,5)*20;
+ var score=Math.round(edgeScore*.30+h10*.18+hs*.14+h5*.10+consistency*.08+matchup*.08+role*.07+usage*.05);
+ score=clamp(score,0,100);
+ return {score:score,edge:signed,edgePct:edgePct,parts:{Edge:Math.round(edgeScore),"Last 10":Math.round(h10),Season:Math.round(hs),"Last 5":Math.round(h5),Consistency:Math.round(consistency),Matchup:Math.round(matchup),Role:Math.round(role),Usage:Math.round(usage)}}
+}
+function tier(s){if(s>=80)return ["Strong statistical edge","strong"];if(s>=65)return ["Worth a closer look","look"];if(s>=50)return ["Mixed","mixed"];return ["Weak","weak"]}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]})}
+function why(p,c){
+ var bits=[];
+ if(c.edgePct>=8)bits.push("projection has a sizable edge");
+ else if(c.edgePct>=3)bits.push("projection is above the line");
+ else if(c.edgePct<0)bits.push("projection is on the wrong side of the line");
+ if(Number(p.hit10)>=70)bits.push("strong last-10 hit rate");
+ if(Number(p.hitSeason)>=60)bits.push("solid season hit rate");
+ if(Number(p.matchup)>=4)bits.push("favorable matchup");
+ if(Number(p.role)<=2)bits.push("role confidence is low");
+ return bits.length?bits.join(", ")+".":"Mixed inputs; review the matchup and role before using it."
+}
+function pickCard(p,mode){
+ var c=calc(p),t=tier(c.score),inSlip=p.slip?"Remove from slip":"Add to slip";
+ return '<div class="card"><div class="card-head"><div><div class="player">'+esc(p.player)+'</div><div class="sub">'+esc(p.sport)+(p.opponent?' • vs '+esc(p.opponent):'')+' • '+esc(p.statType)+'</div></div><div class="score '+t[1]+'"><b>'+c.score+'</b><span>research</span></div></div>'+
+ '<div class="linebox"><span class="tag '+(p.direction==="More"?"more":"less")+'">'+esc(p.direction)+' '+Number(p.line)+'</span><span class="tag">Proj '+Number(p.projection)+'</span><span class="tag">Edge '+(c.edge>=0?"+":"")+c.edge.toFixed(1)+' ('+(c.edgePct>=0?"+":"")+c.edgePct.toFixed(1)+'%)</span>'+(p.demo?'<span class="tag demo">Demo data</span>':'')+'</div>'+
+ '<div class="stats"><div class="stat"><div class="v">'+clamp(p.hit5,0,100)+'%</div><div class="k">LAST 5</div></div><div class="stat"><div class="v">'+clamp(p.hit10,0,100)+'%</div><div class="k">LAST 10</div></div><div class="stat"><div class="v">'+clamp(p.hitSeason,0,100)+'%</div><div class="k">SEASON</div></div></div>'+
+ '<div class="explain"><b>'+t[0]+'.</b> '+esc(why(p,c))+'</div>'+
+ (mode==="best"?'<div class="actions"><button class="btn primary slipToggle" data-id="'+p.id+'">'+inSlip+'</button><button class="btn ghost detailBtn" data-id="'+p.id+'">Score details</button><button class="btn danger deletePick" data-id="'+p.id+'">Delete</button></div><div id="detail-'+p.id+'" class="breakdown" style="display:none"></div>':'')+
+ '</div>'
+}
+function breakdownHtml(p){
+ var c=calc(p),h='<div class="section-title" style="font-size:15px">Factor breakdown</div>';
+ Object.keys(c.parts).forEach(function(k){h+='<div class="barrow"><span>'+k+'</span><div class="track"><div class="fill" style="width:'+c.parts[k]+'%"></div></div><b>'+c.parts[k]+'</b></div>'});
+ return h;
+}
+function renderChips(){
+ var el=document.getElementById("sportChips");el.innerHTML=sports.map(function(s){return '<button class="chip '+(activeSport===s?'active':'')+'" data-sport="'+s+'">'+s+'</button>'}).join("");
+ el.querySelectorAll("button").forEach(function(b){b.addEventListener("click",function(){activeSport=b.dataset.sport;renderBest()})})
+}
+function renderBest(){
+ renderChips();
+ var q=document.getElementById("search").value.trim().toLowerCase();
+ var list=state.picks.filter(function(p){if(state.settings.hideLow&&calc(p).score<50)return false;if(activeSport!=="All"&&p.sport!==activeSport)return false;if(q&&p.player.toLowerCase().indexOf(q)<0)return false;return true});
+ list.sort(function(a,b){return sortDesc?calc(b).score-calc(a).score:calc(a).score-calc(b).score});
+ document.getElementById("pickCount").textContent=state.picks.length+" picks";
+ var el=document.getElementById("pickList");el.innerHTML=list.length?list.map(function(p){return pickCard(p,"best")}).join(""):'<div class="empty">No picks match these filters.</div>';
+ el.querySelectorAll(".slipToggle").forEach(function(b){b.addEventListener("click",function(){var p=state.picks.find(function(x){return x.id===b.dataset.id});if(p){p.slip=!p.slip;save();renderBest();renderSlip();toast(p.slip?"Added to slip":"Removed from slip")}})});
+ el.querySelectorAll(".detailBtn").forEach(function(b){b.addEventListener("click",function(){var p=state.picks.find(function(x){return x.id===b.dataset.id}),d=document.getElementById("detail-"+b.dataset.id);if(!p||!d)return;d.innerHTML=breakdownHtml(p);d.style.display=d.style.display==="none"?"block":"none"})});
+ el.querySelectorAll(".deletePick").forEach(function(b){b.addEventListener("click",function(){state.picks=state.picks.filter(function(x){return x.id!==b.dataset.id});save();renderAll();toast("Pick deleted")})});
+}
+function renderSlip(){
+ var list=state.picks.filter(function(p){return p.slip});
+ var sum=document.getElementById("slipSummary"),el=document.getElementById("slipList");
+ if(!list.length){sum.innerHTML="";el.innerHTML='<div class="empty">Add picks from Best Edges to build a slip.</div>';return}
+ var scores=list.map(function(p){return calc(p).score}),avg=Math.round(scores.reduce(function(a,b){return a+b},0)/scores.length),max=Math.max.apply(null,scores),min=Math.min.apply(null,scores);
+ sum.innerHTML='<div class="summary"><div class="stat"><div class="v">'+avg+'</div><div class="k">AVG SCORE</div></div><div class="stat"><div class="v">'+max+'</div><div class="k">STRONGEST</div></div><div class="stat"><div class="v">'+min+'</div><div class="k">WEAKEST</div></div></div><div class="notice">One weak leg can sink a multi-pick entry. Review the lowest-scored leg carefully.</div>';
+ el.innerHTML=list.map(function(p,i){return '<div class="card"><div class="card-head"><div><div class="player">'+(i+1)+'. '+esc(p.player)+'</div><div class="sub">'+esc(p.direction)+' '+p.line+' • '+esc(p.statType)+'</div></div><div class="score '+tier(calc(p).score)[1]+'"><b>'+calc(p).score+'</b><span>research</span></div></div><div class="actions"><button class="btn ghost moveUp" data-id="'+p.id+'">↑ Up</button><button class="btn ghost moveDown" data-id="'+p.id+'">↓ Down</button><button class="btn danger removeSlip" data-id="'+p.id+'">Remove</button></div></div>'}).join("");
+ function move(id,dir){var indices=state.picks.map(function(p,i){return p.slip?i:null}).filter(function(v){return v!==null}),idx=indices.findIndex(function(i){return state.picks[i].id===id});var target=idx+dir;if(idx<0||target<0||target>=indices.length)return;var a=indices[idx],b=indices[target],tmp=state.picks[a];state.picks[a]=state.picks[b];state.picks[b]=tmp;save();renderSlip();renderBest()}
+ el.querySelectorAll(".moveUp").forEach(function(b){b.addEventListener("click",function(){move(b.dataset.id,-1)})});el.querySelectorAll(".moveDown").forEach(function(b){b.addEventListener("click",function(){move(b.dataset.id,1)})});el.querySelectorAll(".removeSlip").forEach(function(b){b.addEventListener("click",function(){var p=state.picks.find(function(x){return x.id===b.dataset.id});if(p)p.slip=false;save();renderAll()})})
+}
+function renderHistory(){
+ var done=state.picks.filter(function(p){return p.result});
+ var wins=done.filter(function(p){return p.result==="Win"}).length,losses=done.filter(function(p){return p.result==="Loss"}).length,pushes=done.filter(function(p){return p.result==="Push"}).length,dec=wins+losses,rate=dec?Math.round(wins/dec*100):0;
+ document.getElementById("historySummary").innerHTML='<div class="summary"><div class="stat"><div class="v">'+done.length+'</div><div class="k">GRADED</div></div><div class="stat"><div class="v">'+wins+'-'+losses+(pushes?'-'+pushes:'')+'</div><div class="k">RECORD</div></div><div class="stat"><div class="v">'+rate+'%</div><div class="k">HIT RATE</div></div></div>';
+ var el=document.getElementById("historyList");
+ el.innerHTML=state.picks.length?state.picks.map(function(p){return '<div class="card"><div class="card-head"><div><div class="player">'+esc(p.player)+'</div><div class="sub">'+esc(p.sport)+' • '+esc(p.direction)+' '+p.line+' '+esc(p.statType)+'</div></div><div class="pill '+(p.result==="Win"?"win":p.result==="Loss"?"loss":p.result==="Push"?"push":"")+'">'+(p.result||"Ungraded")+'</div></div><div class="history-result actions"><button class="btn ghost grade" data-id="'+p.id+'" data-r="Win">Win</button><button class="btn ghost grade" data-id="'+p.id+'" data-r="Loss">Loss</button><button class="btn ghost grade" data-id="'+p.id+'" data-r="Push">Push</button><button class="btn ghost grade" data-id="'+p.id+'" data-r="">Clear</button></div></div>'}).join(""):'<div class="empty">No picks yet.</div>';
+ el.querySelectorAll(".grade").forEach(function(b){b.addEventListener("click",function(){var p=state.picks.find(function(x){return x.id===b.dataset.id});if(p){p.result=b.dataset.r;save();renderHistory();toast(b.dataset.r?("Marked "+b.dataset.r):"Grade cleared")}})})
+}
+function previewFromForm(){
+ var p=formData(false);if(!p.player||!isFinite(p.line)||!isFinite(p.projection)){document.getElementById("previewScore").innerHTML="";return}
+ var c=calc(p),t=tier(c.score);document.getElementById("previewScore").innerHTML='<div class="notice"><b class="'+t[1]+'">Research Score: '+c.score+' — '+t[0]+'</b><div class="tiny" style="margin-top:5px">Edge '+(c.edge>=0?"+":"")+c.edge.toFixed(1)+' ('+(c.edgePct>=0?"+":"")+c.edgePct.toFixed(1)+'%)</div>'+breakdownHtml(p)+'</div>'
+}
+function val(id){return document.getElementById(id).value}
+function num(id,def){var n=Number(val(id));return isFinite(n)?n:def}
+function formData(withId){return {id:withId?("p"+Date.now()+Math.random().toString(36).slice(2,7)):"preview",demo:false,sport:val("sport"),player:val("player").trim(),opponent:val("opponent").trim(),statType:val("statType").trim(),line:num("line",NaN),direction:val("direction"),projection:num("projection",NaN),avg5:num("avg5",0),avg10:num("avg10",0),avgSeason:num("avgSeason",0),hit5:clamp(num("hit5",50),0,100),hit10:clamp(num("hit10",50),0,100),hitSeason:clamp(num("hitSeason",50),0,100),usage:clamp(num("usage",3),1,5),matchup:clamp(num("matchup",3),1,5),role:clamp(num("role",3),1,5),notes:val("notes").trim(),slip:false,result:""}}
+function resetForm(){document.getElementById("pickForm").reset();document.getElementById("usage").value=3;document.getElementById("matchup").value=3;document.getElementById("role").value=3;syncRanges();previewFromForm()}
+function syncRanges(){["usage","matchup","role"].forEach(function(id){document.getElementById(id+"Val").textContent=document.getElementById(id).value+"/5"})}
+function renderSettings(){document.getElementById("dailyLimit").value=state.settings.dailyLimit||"";document.getElementById("hideLow").checked=!!state.settings.hideLow}
+function renderAll(){renderBest();renderSlip();renderHistory();renderSettings();previewFromForm()}
+function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.style.display="block";clearTimeout(toast.t);toast.t=setTimeout(function(){t.style.display="none"},1800)}
+document.querySelectorAll(".nav button").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".nav button").forEach(function(x){x.classList.remove("active")});document.querySelectorAll(".screen").forEach(function(x){x.classList.remove("active")});b.classList.add("active");document.getElementById(b.dataset.tab).classList.add("active");window.scrollTo({top:0,behavior:"smooth"});if(b.dataset.tab==="slip")renderSlip();if(b.dataset.tab==="history")renderHistory()})})
+document.getElementById("search").addEventListener("input",renderBest);
+document.getElementById("sortBtn").addEventListener("click",function(){sortDesc=!sortDesc;this.textContent=sortDesc?"Highest score":"Lowest score";renderBest()});
+["player","line","projection","hit5","hit10","hitSeason","usage","matchup","role"].forEach(function(id){document.getElementById(id).addEventListener("input",function(){syncRanges();previewFromForm()})});
+document.getElementById("pickForm").addEventListener("submit",function(e){e.preventDefault();var p=formData(true);if(!p.player||!p.statType||!isFinite(p.line)||!isFinite(p.projection)){toast("Add player, stat, line and projection");return}state.picks.push(p);save();renderAll();resetForm();toast("Pick saved")});
+document.getElementById("resetForm").addEventListener("click",resetForm);
+document.getElementById("parseBtn").addEventListener("click",function(){var lines=val("pasteText").split(/\n+/).map(function(x){return x.trim()}).filter(Boolean),added=0;lines.forEach(function(row){var a=row.split("|").map(function(x){return x.trim()});if(a.length<5)return;var line=Number(a[2]),proj=Number(a[4]);if(!isFinite(line)||!isFinite(proj))return;state.picks.push({id:"p"+Date.now()+Math.random().toString(36).slice(2,7),demo:false,sport:"NBA",player:a[0],opponent:"",statType:a[1],line:line,direction:/less/i.test(a[3])?"Less":"More",projection:proj,avg5:0,avg10:0,avgSeason:0,hit5:50,hit10:50,hitSeason:50,usage:3,matchup:3,role:3,notes:"Parsed from board text",slip:false,result:""});added++});if(added){save();renderAll();toast("Added "+added+" pick"+(added===1?"":"s"))}else toast("No valid rows found")});
+document.getElementById("saveSettings").addEventListener("click",function(){state.settings.dailyLimit=val("dailyLimit");state.settings.hideLow=document.getElementById("hideLow").checked;save();renderBest();toast("Settings saved")});
+document.getElementById("clearDemo").addEventListener("click",function(){state.picks=state.picks.filter(function(p){return !p.demo});save();renderAll();toast("Demo data cleared")});
+syncRanges();renderAll();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){})})}
+})();
+</script>
+</body>
+</html>
