@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Search the Material Description words.</div>
+        <div class="sub">Search it, then tap a result to highlight that word on the page.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -312,29 +312,49 @@
       const n=String(q||'').toLowerCase().trim().replace(/[^a-z0-9#._/-]/g,'');
       if(!w||!n)return false;
       if(n.length<=2)return w===n;
-      return w.includes(n) || w.startsWith(n);
+      if(w.includes(n)||w.startsWith(n))return true;
+
+      // Match the same one-character OCR mistakes allowed by search,
+      // so the yellow mark lands on the word that caused the page result.
+      const dist1=(a,b)=>{
+        if(Math.abs(a.length-b.length)>1)return 2;
+        let i=0,j=0,d=0;
+        while(i<a.length&&j<b.length){
+          if(a[i]===b[j]){i++;j++;continue}
+          if(++d>1)return d;
+          if(a.length>b.length)i++;
+          else if(b.length>a.length)j++;
+          else{i++;j++}
+        }
+        if(i<a.length||j<b.length)d++;
+        return d;
+      };
+      const head=w.slice(0,Math.min(w.length,n.length));
+      return dist1(head,n)<=1;
     }
 
     function drawHighlights(canvas,pageData,q){
       const boxes=(pageData&&pageData.boxes)||[];
-      if(!boxes.length||!q)return 0;
+      if(!boxes.length||!q)return {hits:0,first:null};
       const ctx=canvas.getContext('2d');
       const sx=canvas.width/(pageData.sourceWidth||canvas.width);
       const sy=canvas.height/(pageData.sourceHeight||canvas.height);
-      let hits=0;
+      let hits=0,first=null;
       ctx.save();
-      ctx.fillStyle='rgba(255,230,70,.48)';
-      ctx.strokeStyle='rgba(255,170,0,.98)';
-      ctx.lineWidth=Math.max(2,canvas.width/450);
+      ctx.fillStyle='rgba(255,235,59,.70)';
+      ctx.strokeStyle='rgba(255,145,0,1)';
+      ctx.lineWidth=Math.max(3,canvas.width/360);
       boxes.forEach(b=>{
         if(!wordMatchesQuery(b.text,q))return;
         const x=b.x0*sx,y=b.y0*sy,w=(b.x1-b.x0)*sx,h=(b.y1-b.y0)*sy;
-        ctx.fillRect(x-2,y-2,w+4,h+4);
-        ctx.strokeRect(x-2,y-2,w+4,h+4);
+        const pad=Math.max(3,h*0.14);
+        ctx.fillRect(x-pad,y-pad,w+pad*2,h+pad*2);
+        ctx.strokeRect(x-pad,y-pad,w+pad*2,h+pad*2);
+        if(!first)first={x:x-pad,y:y-pad,w:w+pad*2,h:h+pad*2};
         hits++;
       });
       ctx.restore();
-      return hits;
+      return {hits,first};
     }
 
     async function processPDF(file,doc){
@@ -471,7 +491,7 @@
     async function preview(doc,pageNum,q){
       $('previewTitle').textContent=doc.name+' · page '+pageNum;
       const body=$('previewBody');
-      body.innerHTML='Loading highlighted page…';
+      body.innerHTML='Loading page and highlighting “'+q+'”…';
       $('previewModal').classList.add('open');
       try{
         const name=doc.name.toLowerCase();
@@ -480,47 +500,86 @@
         if((doc.type==='application/pdf'||name.endsWith('.pdf'))&&doc.blob){
           const pdf=await pdfjsLib.getDocument({data:await doc.blob.arrayBuffer()}).promise;
           const page=await pdf.getPage(pageNum);
-          const vp=page.getViewport({scale:1.8});
+          const vp=page.getViewport({scale:2.2});
           const c=document.createElement('canvas');
-          c.width=Math.floor(vp.width);c.height=Math.floor(vp.height);
+          c.width=Math.floor(vp.width);
+          c.height=Math.floor(vp.height);
           const ctx=c.getContext('2d');
           await page.render({canvasContext:ctx,viewport:vp}).promise;
-          const hits=drawHighlights(c,pageData,q);
+
+          const hi=drawHighlights(c,pageData,q);
           body.innerHTML='';
+
           const badge=document.createElement('div');
           badge.className='previewText';
           badge.style.marginBottom='10px';
-          badge.textContent=hits?('Highlighted '+hits+' match'+(hits===1?'':'es')+' for “'+q+'”'):'Text match found, but this file needs a Rescan to highlight it on the page.';
+          badge.style.fontWeight='800';
+          badge.textContent=hi.hits
+            ? 'Yellow highlight = “'+q+'” on the actual page'
+            : 'This saved scan needs Rescan before I can mark the exact word on the page.';
           body.appendChild(badge);
-          body.appendChild(c);
-          if(pageData){
-            const t=document.createElement('div');
-            t.className='previewText';
-            t.style.marginTop='12px';
-            appendHighlighted(t,snippetAround(pageData.text,q||''),q||'');
-            body.appendChild(t);
+
+          const holder=document.createElement('div');
+          holder.style.position='relative';
+          holder.style.overflow='auto';
+          holder.style.maxHeight='72vh';
+          holder.style.borderRadius='10px';
+          holder.appendChild(c);
+          body.appendChild(holder);
+
+          if(hi.first){
+            requestAnimationFrame(()=>{
+              const scaleY=c.getBoundingClientRect().height/c.height;
+              const target=Math.max(0,(hi.first.y*scaleY)-120);
+              holder.scrollTop=target;
+            });
           }
         }else if(doc.type.startsWith('image/')&&doc.blob){
           const img=await createImageBitmap(doc.blob);
-          const maxW=1100;
+          const maxW=1400;
           const scale=Math.min(1,maxW/img.width);
           const c=document.createElement('canvas');
-          c.width=Math.floor(img.width*scale);c.height=Math.floor(img.height*scale);
-          const ctx=c.getContext('2d');ctx.drawImage(img,0,0,c.width,c.height);
-          const hits=drawHighlights(c,pageData,q);
+          c.width=Math.floor(img.width*scale);
+          c.height=Math.floor(img.height*scale);
+          const ctx=c.getContext('2d');
+          ctx.drawImage(img,0,0,c.width,c.height);
+
+          const hi=drawHighlights(c,pageData,q);
           body.innerHTML='';
+
           const badge=document.createElement('div');
           badge.className='previewText';
           badge.style.marginBottom='10px';
-          badge.textContent=hits?('Highlighted '+hits+' match'+(hits===1?'':'es')+' for “'+q+'”'):'Text match found, but this file needs a Rescan to highlight it on the picture.';
-          body.appendChild(badge);body.appendChild(c);
+          badge.style.fontWeight='800';
+          badge.textContent=hi.hits
+            ? 'Yellow highlight = “'+q+'” on the actual picture'
+            : 'This saved scan needs Rescan before I can mark the exact word on the picture.';
+          body.appendChild(badge);
+
+          const holder=document.createElement('div');
+          holder.style.position='relative';
+          holder.style.overflow='auto';
+          holder.style.maxHeight='72vh';
+          holder.style.borderRadius='10px';
+          holder.appendChild(c);
+          body.appendChild(holder);
+
+          if(hi.first){
+            requestAnimationFrame(()=>{
+              const scaleY=c.getBoundingClientRect().height/c.height;
+              holder.scrollTop=Math.max(0,(hi.first.y*scaleY)-120);
+            });
+          }
         }else{
           body.innerHTML='';
-          const t=document.createElement('div');t.className='previewText';
+          const t=document.createElement('div');
+          t.className='previewText';
           appendHighlighted(t,pageData?pageData.text:'No preview available.',q||'');
           body.appendChild(t);
         }
-      }catch(e){body.textContent='Preview failed: '+(e.message||e)}
+      }catch(e){
+        body.textContent='Preview failed: '+(e.message||e);
+      }
     }
 
     function renderFileList(){
