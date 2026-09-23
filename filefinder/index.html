@@ -78,7 +78,7 @@
     <header>
       <div>
         <h1>File Finder</h1>
-        <div class="sub">Upload it once. Search words in text AND pictures.</div>
+        <div class="sub">Upload it once. Search the material area.</div>
       </div>
       <button class="ghost" id="installBtn">Install</button>
     </header>
@@ -102,7 +102,7 @@
       <div class="count" id="resultCount"></div>
     </div>
     <div class="results" id="results">
-      <div class="empty">Upload a PDF, Word file, or picture. I’ll read the words inside pictures too.</div>
+      <div class="empty">Upload a sheet or picture. I’ll scan the material section and ignore the top job-site header.</div>
     </div>
   </div>
 
@@ -210,8 +210,16 @@
       const pool=selected==='all'?docs:docs.filter(d=>d.id===selected);
       for(const doc of pool){
         for(const p of (doc.pages||[])){
-          const text=p.text||''; const low=text.toLowerCase(), needle=q.toLowerCase(); let from=0, found=0;
-          while(true){const i=low.indexOf(needle,from);if(i<0)break;found++;from=i+Math.max(1,needle.length);if(found>=20)break}
+          const text=p.text||''; const low=text.toLowerCase(), needle=q.toLowerCase(); let found=0;
+          if(needle.length<=2){
+            // Short searches such as "V" should match a standalone material/code,
+            // not random letters inside longer words.
+            const tokens=low.match(/[a-z0-9#._/-]+/g)||[];
+            found=tokens.filter(t=>t===needle).length;
+          }else{
+            let from=0;
+            while(true){const i=low.indexOf(needle,from);if(i<0)break;found++;from=i+Math.max(1,needle.length);if(found>=20)break}
+          }
           if(found)matches.push({doc,page:p.page,text,count:found});
         }
       }
@@ -247,30 +255,33 @@
       try{
         ocrWorker=await makeOCRWorker(file.name);
         for(let n=1;n<=pdf.numPages;n++){
-          setProgress(((n-1)/pdf.numPages)*100,'Reading ALL text, including pictures · page '+n+' of '+pdf.numPages);
+          setProgress(((n-1)/pdf.numPages)*100,'Scanning material area · page '+n+' of '+pdf.numPages);
           const page=await pdf.getPage(n);
 
-          // Read normal selectable PDF text first.
-          const tc=await page.getTextContent();
-          const embedded=tc.items.map(x=>x.str).join(' ').replace(/\s+/g,' ').trim();
-
-          // ALWAYS OCR the visible page too. This is what makes words printed
-          // inside scans/photos searchable even when the PDF already contains
-          // some ordinary text elsewhere on the same page.
+          // Render the whole page so the document still previews normally.
           const vp=page.getViewport({scale:3});
-          const canvas=document.createElement('canvas');
-          const ctx=canvas.getContext('2d',{alpha:false});
-          canvas.width=Math.floor(vp.width);
-          canvas.height=Math.floor(vp.height);
-          ctx.fillStyle='#fff';
-          ctx.fillRect(0,0,canvas.width,canvas.height);
-          await page.render({canvasContext:ctx,viewport:vp}).promise;
+          const full=document.createElement('canvas');
+          const fullCtx=full.getContext('2d',{alpha:false});
+          full.width=Math.floor(vp.width);
+          full.height=Math.floor(vp.height);
+          fullCtx.fillStyle='#fff';
+          fullCtx.fillRect(0,0,full.width,full.height);
+          await page.render({canvasContext:fullCtx,viewport:vp}).promise;
 
-          const out=await ocrWorker.recognize(canvas);
-          const pictured=(out.data.text||'').replace(/\s+/g,' ').trim();
+          // Do NOT index the form/header at the top (job site, dates, etc.).
+          // OCR begins below the top 18% so searches focus on the material table/description area.
+          const topCut=Math.floor(full.height*0.18);
+          const body=document.createElement('canvas');
+          const bodyCtx=body.getContext('2d',{alpha:false});
+          body.width=full.width;
+          body.height=full.height-topCut;
+          bodyCtx.fillStyle='#fff';
+          bodyCtx.fillRect(0,0,body.width,body.height);
+          bodyCtx.drawImage(full,0,topCut,full.width,body.height,0,0,body.width,body.height);
 
-          // Keep both sources. Searching is case-insensitive.
-          const text=(embedded+' '+pictured).replace(/\s+/g,' ').trim();
+          const out=await ocrWorker.recognize(body);
+          const text=(out.data.text||'').replace(/\s+/g,' ').trim();
+
           doc.pages.push({page:n,text});
           doc.progress=Math.round(n/pdf.numPages*100);
           await putDoc(doc);
@@ -283,8 +294,17 @@
     async function processImage(file,doc){
       const worker=await makeOCRWorker(file.name);
       try{
-        setProgress(10,'Reading words in picture: '+file.name);
-        const out=await worker.recognize(file);
+        setProgress(10,'Scanning material area in picture: '+file.name);
+        const img=await createImageBitmap(file);
+        const topCut=Math.floor(img.height*0.18);
+        const canvas=document.createElement('canvas');
+        canvas.width=img.width;
+        canvas.height=img.height-topCut;
+        const ctx=canvas.getContext('2d',{alpha:false});
+        ctx.fillStyle='#fff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,topCut,img.width,img.height-topCut,0,0,canvas.width,canvas.height);
+        const out=await worker.recognize(canvas);
         doc.pages=[{page:1,text:(out.data.text||'').replace(/\s+/g,' ').trim()}];
         doc.pageCount=1;
         await putDoc(doc);
